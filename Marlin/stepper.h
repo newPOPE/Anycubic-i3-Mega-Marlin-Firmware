@@ -123,14 +123,18 @@ class Stepper {
 
     #if ENABLED(LIN_ADVANCE)
 
-      static uint16_t nextMainISR, nextAdvanceISR, eISR_Rate;
+      static uint32_t LA_decelerate_after; // Copy from current executed block. Needed because current_block is set to NULL "too early".
+      static uint16_t nextMainISR, nextAdvanceISR, eISR_Rate, current_adv_steps,
+                      final_adv_steps, max_adv_steps; // Copy from current executed block. Needed because current_block is set to NULL "too early".
       #define _NEXT_ISR(T) nextMainISR = T
-      static volatile int e_steps[E_STEPPERS];
-      static int final_estep_rate;
-      static int current_estep_rate[E_STEPPERS]; // Actual extruder speed [steps/s]
-      static int current_adv_steps[E_STEPPERS];  // The amount of current added esteps due to advance.
-                                                 // i.e., the current amount of pressure applied
-                                                 // to the spring (=filament).
+      static int8_t e_steps;
+      static bool use_advance_lead;
+      #if E_STEPPERS > 1
+        static int8_t LA_active_extruder; // Copy from current executed block. Needed because current_block is set to NULL "too early".
+      #else
+        static constexpr int8_t LA_active_extruder = 0;
+      #endif
+
     #else // !LIN_ADVANCE
 
       #define _NEXT_ISR(T) OCR1A = T
@@ -336,8 +340,8 @@ class Stepper {
       }
       if (timer < 100) { // (20kHz - this should never happen)
         timer = 100;
-        MYSERIAL.print(MSG_STEPPER_TOO_HIGH);
-        MYSERIAL.println(step_rate);
+        SERIAL_PROTOCOL(MSG_STEPPER_TOO_HIGH);
+        SERIAL_PROTOCOLLN(step_rate);
       }
       return timer;
     }
@@ -347,6 +351,21 @@ class Stepper {
     FORCE_INLINE static void trapezoid_generator_reset() {
 
       static int8_t last_extruder = -1;
+
+      #if ENABLED(LIN_ADVANCE)
+        #if E_STEPPERS > 1
+          if (current_block->active_extruder != last_extruder) {
+            current_adv_steps = 0; // If the now active extruder wasn't in use during the last move, its pressure is most likely gone.
+            LA_active_extruder = current_block->active_extruder;
+          }
+        #endif
+
+        if ((use_advance_lead = current_block->use_advance_lead)) {
+          LA_decelerate_after = current_block->decelerate_after;
+          final_adv_steps = current_block->final_adv_steps;
+          max_adv_steps = current_block->max_adv_steps;
+        }
+      #endif
 
       if (current_block->direction_bits != last_direction_bits || current_block->active_extruder != last_extruder) {
         last_direction_bits = current_block->direction_bits;
@@ -363,22 +382,6 @@ class Stepper {
       acceleration_time = calc_timer_interval(acc_step_rate);
       _NEXT_ISR(acceleration_time);
 
-      #if ENABLED(LIN_ADVANCE)
-        if (current_block->use_advance_lead) {
-          current_estep_rate[current_block->active_extruder] = ((unsigned long)acc_step_rate * current_block->abs_adv_steps_multiplier8) >> 17;
-          final_estep_rate = (current_block->nominal_rate * current_block->abs_adv_steps_multiplier8) >> 17;
-        }
-      #endif
-
-      // SERIAL_ECHO_START();
-      // SERIAL_ECHOPGM("advance :");
-      // SERIAL_ECHO(current_block->advance/256.0);
-      // SERIAL_ECHOPGM("advance rate :");
-      // SERIAL_ECHO(current_block->advance_rate/256.0);
-      // SERIAL_ECHOPGM("initial advance :");
-      // SERIAL_ECHO(current_block->initial_advance/256.0);
-      // SERIAL_ECHOPGM("final advance :");
-      // SERIAL_ECHOLN(current_block->final_advance/256.0);
     }
 
     #if HAS_DIGIPOTSS || HAS_MOTOR_CURRENT_PWM

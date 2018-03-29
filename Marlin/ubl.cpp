@@ -20,19 +20,40 @@
  *
  */
 
-#include "Marlin.h"
-#include "math.h"
+#include "MarlinConfig.h"
 
 #if ENABLED(AUTO_BED_LEVELING_UBL)
 
+  #include "Marlin.h"
   #include "ubl.h"
   #include "hex_print_routines.h"
   #include "temperature.h"
   #include "planner.h"
+  #include "math.h"
+
+  unified_bed_leveling ubl;
 
   uint8_t ubl_cnt = 0;
 
   void unified_bed_leveling::echo_name() { SERIAL_PROTOCOLPGM("Unified Bed Leveling"); }
+
+  void unified_bed_leveling::report_current_mesh() {
+    if (!leveling_is_valid()) return;
+    SERIAL_ECHO_START();
+    SERIAL_ECHOLNPGM("  G29 I 999");
+    for (uint8_t x = 0; x < GRID_MAX_POINTS_X; x++)
+      for (uint8_t y = 0;  y < GRID_MAX_POINTS_Y; y++)
+        if (!isnan(z_values[x][y])) {
+          SERIAL_ECHO_START();
+          SERIAL_ECHOPAIR("  M421 I ", x);
+          SERIAL_ECHOPAIR(" J ", y);
+          SERIAL_ECHOPGM(" Z ");
+          SERIAL_ECHO_F(z_values[x][y], 6);
+          SERIAL_ECHOPAIR(" ; X ", LOGICAL_X_POSITION(mesh_index_to_xpos(x)));
+          SERIAL_ECHOPAIR(", Y ", LOGICAL_Y_POSITION(mesh_index_to_ypos(y)));
+          SERIAL_EOL();
+        }
+  }
 
   void unified_bed_leveling::report_state() {
     echo_name();
@@ -154,6 +175,10 @@
   // 2 : disply of the map data on a RepRap Graphical LCD Panel
 
   void unified_bed_leveling::display_map(const int map_type) {
+    #if HAS_AUTO_REPORTING || ENABLED(HOST_KEEPALIVE_FEATURE)
+      suspend_auto_report = true;
+    #endif
+
     constexpr uint8_t spaces = 8 * (GRID_MAX_POINTS_X - 2);
 
     SERIAL_PROTOCOLPGM("\nBed Topography Report");
@@ -196,7 +221,7 @@
         if (map_type == 1 && i < GRID_MAX_POINTS_X - 1) SERIAL_CHAR(',');
 
         #if TX_BUFFER_SIZE > 0
-          MYSERIAL.flushTX();
+          SERIAL_FLUSHTX();
         #endif
         safe_delay(15);
         if (map_type == 0) {
@@ -221,6 +246,10 @@
       serial_echo_xy(GRID_MAX_POINTS_X - 1, 0);
       SERIAL_EOL();
     }
+
+    #if HAS_AUTO_REPORTING || ENABLED(HOST_KEEPALIVE_FEATURE)
+      suspend_auto_report = false;
+    #endif
   }
 
   bool unified_bed_leveling::sanity_check() {

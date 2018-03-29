@@ -86,7 +86,7 @@
  *   Anet Users / Skynet SW on Facebook - https://www.facebook.com/skynet3ddevelopment/
  *
  *   Many thanks to Hans Raaf (@oderwat) for developing the Anet-specific software and supporting the Anet community.
-*/
+ */
 
 #ifndef __AVR_ATmega1284P__
   #error "Oops!  Make sure you have 'Anet V1.0', 'Anet V1.0 (Optiboot)' or 'Sanguino' selected from the 'Tools -> Boards' menu."
@@ -125,14 +125,14 @@
 //
 // Temperature Sensors
 //
-#define TEMP_0_PIN          7  // Analog Input (pin 33 extruder)
-#define TEMP_BED_PIN        6  // Analog Input (pin 34 bed)
+#define TEMP_0_PIN          7   // Analog Input (pin 33 extruder)
+#define TEMP_BED_PIN        6   // Analog Input (pin 34 bed)
 
 //
 // Heaters / Fans
 //
-#define HEATER_0_PIN       13  // (extruder)
-#define HEATER_BED_PIN     12  // (bed)
+#define HEATER_0_PIN       13   // (extruder)
+#define HEATER_BED_PIN     12   // (bed)
 #define FAN_PIN             4
 
 //
@@ -176,9 +176,15 @@
     #define BTN_EN1          11
     #define BTN_EN2          10
     #define BTN_ENC          16
-    #define ST7920_DELAY_1 DELAY_0_NOP
-    #define ST7920_DELAY_2 DELAY_1_NOP
-    #define ST7920_DELAY_3 DELAY_2_NOP
+    #ifndef ST7920_DELAY_1
+      #define ST7920_DELAY_1 DELAY_0_NOP
+    #endif
+    #ifndef ST7920_DELAY_2
+      #define ST7920_DELAY_2 DELAY_1_NOP
+    #endif
+    #ifndef ST7920_DELAY_3
+      #define ST7920_DELAY_3 DELAY_2_NOP
+    #endif
     #define STD_ENCODER_PULSES_PER_STEP 4
     #define STD_ENCODER_STEPS_PER_MENU_ITEM 1
   #endif

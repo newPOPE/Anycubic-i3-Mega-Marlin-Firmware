@@ -59,6 +59,7 @@
 #define BOARD_BAM_DICE          401   // 2PrintBeta BAM&DICE with STK drivers
 #define BOARD_BAM_DICE_DUE      402   // 2PrintBeta BAM&DICE Due with STK drivers
 #define BOARD_MKS_BASE          40    // MKS BASE 1.0
+#define BOARD_MKS_BASE_HEROIC   41    // MKS BASE 1.0 with Heroic HR4982 stepper drivers
 #define BOARD_MKS_13            47    // MKS v1.3 or 1.4 (maybe higher)
 #define BOARD_MKS_GEN_L         53    // MKS GEN L
 #define BOARD_ZRIB_V20          504   // zrib V2.0 control board (Chinese knock off RAMPS replica)
@@ -74,6 +75,7 @@
 #define BOARD_RUMBA             80    // Rumba
 #define BOARD_BQ_ZUM_MEGA_3D    503   // bq ZUM Mega 3D
 #define BOARD_MAKEBOARD_MINI    431   // MakeBoard Mini v2.1.2 is a control board sold by MicroMake
+#define BOARD_TRIGORILLA        343   // TriGorilla Anycubic version 1.3 based on RAMPS EFB
 
 //
 // Other ATmega1280, ATmega2560
@@ -91,6 +93,7 @@
 #define BOARD_RAMBO             301   // Rambo
 #define BOARD_MINIRAMBO         302   // Mini-Rambo
 #define BOARD_MINIRAMBO_10A     303   // Mini-Rambo 1.0a
+#define BOARD_EINSY_RAMBO       304   // Einsy Rambo
 #define BOARD_ELEFU_3           21    // Elefu Ra Board (v3)
 #define BOARD_LEAPFROG          999   // Leapfrog
 #define BOARD_MEGACONTROLLER    310   // Mega controller
@@ -114,6 +117,8 @@
 #define BOARD_MELZI             63    // Melzi
 #define BOARD_MELZI_MAKR3D      66    // Melzi with ATmega1284 (MaKr3d version)
 #define BOARD_MELZI_CREALITY    89    // Melzi Creality3D board (for CR-10 etc)
+#define BOARD_MELZI_MALYAN      92    // Melzi Malyan M150 board
+#define BOARD_MELZI_TRONXY      505   // Tronxy X5S
 #define BOARD_STB_11            64    // STB V1.1
 #define BOARD_AZTEEG_X1         65    // Azteeg X1
 
