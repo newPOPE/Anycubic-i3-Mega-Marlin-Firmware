@@ -37,7 +37,7 @@
  */
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
-#define CONFIGURATION_H_VERSION 010107
+#define CONFIGURATION_H_VERSION 010109
 
 //===========================================================================
 //============================= Getting Started =============================
@@ -260,6 +260,7 @@
  *
  * Temperature sensors available:
  *
+ *    -4 : thermocouple with AD8495
  *    -3 : thermocouple with MAX31855 (only for sensor 0)
  *    -2 : thermocouple with MAX6675 (only for sensor 0)
  *    -1 : thermocouple with AD595
@@ -300,7 +301,7 @@
  *   998 : Dummy Table that ALWAYS reads 25°C or the temperature defined below.
  *   999 : Dummy Table that ALWAYS reads 100°C or the temperature defined below.
  *
- * :{ '0': "Not used", '1':"100k / 4.7k - EPCOS", '2':"200k / 4.7k - ATC Semitec 204GT-2", '3':"Mendel-parts / 4.7k", '4':"10k !! do not use for a hotend. Bad resolution at high temp. !!", '5':"100K / 4.7k - ATC Semitec 104GT-2 (Used in ParCan & J-Head)", '6':"100k / 4.7k EPCOS - Not as accurate as Table 1", '7':"100k / 4.7k Honeywell 135-104LAG-J01", '8':"100k / 4.7k 0603 SMD Vishay NTCS0603E3104FXT", '9':"100k / 4.7k GE Sensing AL03006-58.2K-97-G1", '10':"100k / 4.7k RS 198-961", '11':"100k / 4.7k beta 3950 1%", '12':"100k / 4.7k 0603 SMD Vishay NTCS0603E3104FXT (calibrated for Makibox hot bed)", '13':"100k Hisens 3950  1% up to 300°C for hotend 'Simple ONE ' & hotend 'All In ONE'", '20':"PT100 (Ultimainboard V2.x)", '51':"100k / 1k - EPCOS", '52':"200k / 1k - ATC Semitec 204GT-2", '55':"100k / 1k - ATC Semitec 104GT-2 (Used in ParCan & J-Head)", '60':"100k Maker's Tool Works Kapton Bed Thermistor beta=3950", '66':"Dyze Design 4.7M High Temperature thermistor", '70':"the 100K thermistor found in the bq Hephestos 2", '71':"100k / 4.7k Honeywell 135-104LAF-J01", '147':"Pt100 / 4.7k", '1047':"Pt1000 / 4.7k", '110':"Pt100 / 1k (non-standard)", '1010':"Pt1000 / 1k (non standard)", '-3':"Thermocouple + MAX31855 (only for sensor 0)", '-2':"Thermocouple + MAX6675 (only for sensor 0)", '-1':"Thermocouple + AD595",'998':"Dummy 1", '999':"Dummy 2" }
+ * :{ '0': "Not used", '1':"100k / 4.7k - EPCOS", '2':"200k / 4.7k - ATC Semitec 204GT-2", '3':"Mendel-parts / 4.7k", '4':"10k !! do not use for a hotend. Bad resolution at high temp. !!", '5':"100K / 4.7k - ATC Semitec 104GT-2 (Used in ParCan & J-Head)", '6':"100k / 4.7k EPCOS - Not as accurate as Table 1", '7':"100k / 4.7k Honeywell 135-104LAG-J01", '8':"100k / 4.7k 0603 SMD Vishay NTCS0603E3104FXT", '9':"100k / 4.7k GE Sensing AL03006-58.2K-97-G1", '10':"100k / 4.7k RS 198-961", '11':"100k / 4.7k beta 3950 1%", '12':"100k / 4.7k 0603 SMD Vishay NTCS0603E3104FXT (calibrated for Makibox hot bed)", '13':"100k Hisens 3950  1% up to 300°C for hotend 'Simple ONE ' & hotend 'All In ONE'", '20':"PT100 (Ultimainboard V2.x)", '51':"100k / 1k - EPCOS", '52':"200k / 1k - ATC Semitec 204GT-2", '55':"100k / 1k - ATC Semitec 104GT-2 (Used in ParCan & J-Head)", '60':"100k Maker's Tool Works Kapton Bed Thermistor beta=3950", '66':"Dyze Design 4.7M High Temperature thermistor", '70':"the 100K thermistor found in the bq Hephestos 2", '71':"100k / 4.7k Honeywell 135-104LAF-J01", '147':"Pt100 / 4.7k", '1047':"Pt1000 / 4.7k", '110':"Pt100 / 1k (non-standard)", '1010':"Pt1000 / 1k (non standard)", '-4':"Thermocouple + AD8495", '-3':"Thermocouple + MAX31855 (only for sensor 0)", '-2':"Thermocouple + MAX6675 (only for sensor 0)", '-1':"Thermocouple + AD595",'998':"Dummy 1", '999':"Dummy 2" }
  */
 #define TEMP_SENSOR_0 5
 #define TEMP_SENSOR_1 0
@@ -308,6 +309,7 @@
 #define TEMP_SENSOR_3 0
 #define TEMP_SENSOR_4 0
 #define TEMP_SENSOR_BED 5
+#define TEMP_SENSOR_CHAMBER 0
 
 // Dummy thermistor constant temperature readings, for use with 998 and 999
 #define DUMMY_THERMISTOR_998_VALUE 25
@@ -396,23 +398,30 @@
 //===========================================================================
 //============================= PID > Bed Temperature Control ===============
 //===========================================================================
-// Select PID or bang-bang with PIDTEMPBED. If bang-bang, BED_LIMIT_SWITCHING will enable hysteresis
-//
-// Uncomment this to enable PID on the bed. It uses the same frequency PWM as the extruder.
-// If your PID_dT is the default, and correct for your hardware/configuration, that means 7.689Hz,
-// which is fine for driving a square wave into a resistive load and does not significantly impact you FET heating.
-// This also works fine on a Fotek SSR-10DA Solid State Relay into a 250W heater.
-// If your configuration is significantly different than this and you don't understand the issues involved, you probably
-// shouldn't use bed PID until someone else verifies your hardware works.
-// If this is enabled, find your own PID constants below.
+
+/**
+ * PID Bed Heating
+ *
+ * If this option is enabled set PID constants below.
+ * If this option is disabled, bang-bang will be used and BED_LIMIT_SWITCHING will enable hysteresis.
+ *
+ * The PID frequency will be the same as the extruder PWM.
+ * If PID_dT is the default, and correct for the hardware/configuration, that means 7.689Hz,
+ * which is fine for driving a square wave into a resistive load and does not significantly
+ * impact FET heating. This also works fine on a Fotek SSR-10DA Solid State Relay into a 250W
+ * heater. If your configuration is significantly different than this and you don't understand
+ * the issues involved, don't use bed PID until someone else verifies that your hardware works.
+ */
 //#define PIDTEMPBED
 
 #define BED_LIMIT_SWITCHING
 
-// This sets the max power delivered to the bed, and replaces the HEATER_BED_DUTY_CYCLE_DIVIDER option.
-// all forms of bed control obey this (PID, bang-bang, bang-bang with hysteresis)
-// setting this to anything other than 255 enables a form of PWM to the bed just like HEATER_BED_DUTY_CYCLE_DIVIDER did,
-// so you shouldn't use it unless you are OK with PWM on your bed.  (see the comment on enabling PIDTEMPBED)
+/**
+ * Max Bed Power
+ * Applies to all forms of bed control (PID, bang-bang, and bang-bang with hysteresis).
+ * When set to any value below 255, enables a form of PWM to the bed that acts like a divider
+ * so don't use it unless you are OK with PWM on your bed. (See the comment on enabling PIDTEMPBED)
+ */
 #define MAX_BED_POWER 255 // limits duty cycle to bed; 255=full current
 
 #if ENABLED(PIDTEMPBED)
@@ -436,15 +445,20 @@
 
 // @section extruder
 
-// This option prevents extrusion if the temperature is below EXTRUDE_MINTEMP.
-// It also enables the M302 command to set the minimum extrusion temperature
-// or to allow moving the extruder regardless of the hotend temperature.
-// *** IT IS HIGHLY RECOMMENDED TO LEAVE THIS OPTION ENABLED! ***
+/**
+ * Prevent extrusion if the temperature is below EXTRUDE_MINTEMP.
+ * Add M302 to set the minimum extrusion temperature and/or turn
+ * cold extrusion prevention on and off.
+ *
+ * *** IT IS HIGHLY RECOMMENDED TO LEAVE THIS OPTION ENABLED! ***
+ */
 #define PREVENT_COLD_EXTRUSION
 #define EXTRUDE_MINTEMP 160  // 160 guards against false tripping when the extruder fan kicks on.
 
-// This option prevents a single extrusion longer than EXTRUDE_MAXLENGTH.
-// Note that for Bowden Extruders a too-small value here may prevent loading.
+/**
+ * Prevent a single extrusion longer than EXTRUDE_MAXLENGTH.
+ * Note: For Bowden Extruders make this large enough to allow load/unload.
+ */
 #define PREVENT_LENGTHY_EXTRUDE
 #define EXTRUDE_MAXLENGTH 200
 
@@ -525,6 +539,23 @@
 // This will remove the need to poll the interrupt pins, saving many CPU cycles.
 #define ENDSTOP_INTERRUPTS_FEATURE
 
+/**
+ * Endstop Noise Filter
+ *
+ * Enable this option if endstops falsely trigger due to noise.
+ * NOTE: Enabling this feature means adds an error of +/-0.2mm, so homing
+ * will end up at a slightly different position on each G28. This will also
+ * reduce accuracy of some bed probes.
+ * For mechanical switches, the better approach to reduce noise is to install
+ * a 100 nanofarads ceramic capacitor in parallel with the switch, making it
+ * essentially noise-proof without sacrificing accuracy.
+ * This option also increases MCU load when endstops or the probe are enabled.
+ * So this is not recommended. USE AT YOUR OWN RISK.
+ * (This feature is not required for common micro-switches mounted on PCBs
+ * based on the Makerbot design, since they already include the 100nF capacitor.)
+ */
+//#define ENDSTOP_NOISE_FILTER
+
 //=============================================================================
 //============================== Movement Settings ============================
 //=============================================================================
@@ -592,6 +623,16 @@
 #define DEFAULT_ZJERK                  0.3
 #define DEFAULT_EJERK                  5.0
 
+/**
+ * S-Curve Acceleration
+ *
+ * This option eliminates vibration during printing by fitting a Bézier
+ * curve to move acceleration, producing much smoother direction changes.
+ *
+ * See https://github.com/synthetos/TinyG/wiki/Jerk-Controlled-Motion-Explained
+ */
+//#define S_CURVE_ACCELERATION
+
 //===========================================================================
 //============================= Z Probe Options =============================
 //===========================================================================
@@ -652,7 +693,7 @@
 /**
  * Z Servo Probe, such as an endstop switch on a rotating arm.
  */
-//#define Z_ENDSTOP_SERVO_NR 0   // Defaults to SERVO 0 connector.
+//#define Z_PROBE_SERVO_NR 0   // Defaults to SERVO 0 connector.
 //#define Z_SERVO_ANGLES {70,0}  // Z Servo Deploy and Stow angles
 
 /**
@@ -671,6 +712,9 @@
  * readings with inductive probes and piezo sensors.
  */
 //#define PROBING_HEATERS_OFF       // Turn heaters off when probing
+#if ENABLED(PROBING_HEATERS_OFF)
+  //#define WAIT_FOR_BED_HEATER     // Wait for bed to heat back up between probes (to improve accuracy)
+#endif
 //#define PROBING_FANS_OFF          // Turn fans off when probing
 //#define DELAY_BEFORE_PROBING 200  // (ms) To prevent vibrations from triggering piezo sensors
 
@@ -714,10 +758,10 @@
 // X and Y axis travel speed (mm/m) between probes
 #define XY_PROBE_SPEED 6000
 
-// Speed for the first approach when double-probing (MULTIPLE_PROBING == 2)
+// Feedrate (mm/m) for the first approach when double-probing (MULTIPLE_PROBING == 2)
 #define Z_PROBE_SPEED_FAST HOMING_FEEDRATE_Z
 
-// Speed for the "accurate" probe of each point
+// Feedrate (mm/m) for the "accurate" probe of each point
 #define Z_PROBE_SPEED_SLOW (Z_PROBE_SPEED_FAST / 2)
 
 // The number of probes to perform at each point.
@@ -742,6 +786,8 @@
 #define Z_CLEARANCE_DEPLOY_PROBE   10 // Z Clearance for Deploy/Stow
 #define Z_CLEARANCE_BETWEEN_PROBES  5 // Z Clearance between probe points
 //#define Z_AFTER_PROBING           5 // Z position after probing is done
+
+#define Z_PROBE_LOW_POINT          -2 // Farthest distance below the trigger-point to go before stopping
 
 // For M851 give a range for adjusting the Z probe offset
 #define Z_PROBE_OFFSET_RANGE_MIN -20
@@ -776,9 +822,6 @@
 #define INVERT_X_DIR false
 #define INVERT_Y_DIR false
 #define INVERT_Z_DIR true
-
-// Enable this option for Toshiba stepper drivers
-//#define CONFIG_STEPPERS_TOSHIBA
 
 // @section extruder
 
@@ -841,6 +884,10 @@
   #define MAX_SOFTWARE_ENDSTOP_X
   #define MAX_SOFTWARE_ENDSTOP_Y
   #define MAX_SOFTWARE_ENDSTOP_Z
+#endif
+
+#if ENABLED(MIN_SOFTWARE_ENDSTOPS) || ENABLED(MAX_SOFTWARE_ENDSTOPS)
+  //#define SOFT_ENDSTOPS_MENU_ITEM  // Enable/Disable software endstops from the LCD
 #endif
 
 /**
@@ -948,10 +995,10 @@
   #define GRID_MAX_POINTS_Y GRID_MAX_POINTS_X
 
   // Set the boundaries for probing (where the probe can reach).
-  //#define LEFT_PROBE_BED_POSITION 15
-  //#define RIGHT_PROBE_BED_POSITION 190
-  //#define FRONT_PROBE_BED_POSITION 15
-  //#define BACK_PROBE_BED_POSITION 170
+  //#define LEFT_PROBE_BED_POSITION MIN_PROBE_EDGE
+  //#define RIGHT_PROBE_BED_POSITION (X_BED_SIZE - MIN_PROBE_EDGE)
+  //#define FRONT_PROBE_BED_POSITION MIN_PROBE_EDGE
+  //#define BACK_PROBE_BED_POSITION (Y_BED_SIZE - MIN_PROBE_EDGE)
 
   // Probe along the Y axis, advancing X after each column
   //#define PROBE_Y_FIRST
@@ -973,17 +1020,6 @@
     #endif
 
   #endif
-
-#elif ENABLED(AUTO_BED_LEVELING_3POINT)
-
-  // 3 arbitrary points to probe.
-  // A simple cross-product is used to estimate the plane of the bed.
-  #define PROBE_PT_1_X 20
-  #define PROBE_PT_1_Y 160
-  #define PROBE_PT_2_X 20
-  #define PROBE_PT_2_Y 10
-  #define PROBE_PT_3_X 180
-  #define PROBE_PT_3_Y 10
 
 #elif ENABLED(AUTO_BED_LEVELING_UBL)
 
@@ -1022,17 +1058,17 @@
  * Override if the automatically selected points are inadequate.
  */
 #if ENABLED(AUTO_BED_LEVELING_3POINT) || ENABLED(AUTO_BED_LEVELING_UBL)
-  //#define PROBE_PT_1_X 15
-  //#define PROBE_PT_1_Y 180
-  //#define PROBE_PT_2_X 15
-  //#define PROBE_PT_2_Y 20
-  //#define PROBE_PT_3_X 170
-  //#define PROBE_PT_3_Y 20
+  #define PROBE_PT_1_X 20
+  #define PROBE_PT_1_Y 160
+  #define PROBE_PT_2_X 20
+  #define PROBE_PT_2_Y 10
+  #define PROBE_PT_3_X 180
+  #define PROBE_PT_3_Y 10
 #endif
 
 /**
- * Use the LCD controller for bed leveling
- * Requires MESH_BED_LEVELING or PROBE_MANUALLY
+ * Add a bed leveling sub-menu for ABL or MBL.
+ * Include a guided procedure if manual probing is enabled.
  */
 //#define LCD_BED_LEVELING
 
@@ -1043,6 +1079,11 @@
 
 // Add a menu item to move between bed corners for manual bed adjustment
 //#define LEVEL_BED_CORNERS
+
+#if ENABLED(LEVEL_BED_CORNERS)
+  #define LEVEL_CORNERS_INSET 30    // (mm) An inset for corner leveling
+  //#define LEVEL_CENTER_TOO        // Move to the center after the last corner
+#endif
 
 /**
  * Commands to execute at the end of G29 probing.
@@ -1350,19 +1391,6 @@
 #define DISPLAY_CHARSET_HD44780 JAPANESE
 
 /**
- * LCD TYPE
- *
- * Enable ULTRA_LCD for a 16x2, 16x4, 20x2, or 20x4 character-based LCD.
- * Enable DOGLCD for a 128x64 (ST7565R) Full Graphical Display.
- * (These options will be enabled automatically for most displays.)
- *
- * IMPORTANT: The U8glib library is required for Full Graphic Display!
- *            https://github.com/olikraus/U8glib_Arduino
- */
-//#define ULTRA_LCD   // Character based
-//#define DOGLCD      // Full graphics display
-
-/**
  * SD CARD
  *
  * SD Card support is disabled by default. If your controller has an SD slot,
@@ -1387,6 +1415,15 @@
  * Use CRC checks and retries on the SD communication.
  */
 //#define SD_CHECK_AND_RETRY
+
+/**
+ * LCD Menu Items
+ *
+ * Disable all menus and only display the Status Screen, or
+ * just remove some extraneous menu items to recover space.
+ */
+//#define NO_LCD_MENUS
+//#define SLIM_LCD_MENUS
 
 //
 // ENCODER SETTINGS
@@ -1452,12 +1489,18 @@
 //#define LCD_FEEDBACK_FREQUENCY_DURATION_MS 2
 //#define LCD_FEEDBACK_FREQUENCY_HZ 5000
 
+//=============================================================================
+//======================== LCD / Controller Selection =========================
+//========================   (Character-based LCDs)   =========================
+//=============================================================================
+
 //
-// CONTROLLER TYPE: Standard
+// RepRapDiscount Smart Controller.
+// http://reprap.org/wiki/RepRapDiscount_Smart_Controller
 //
-// Marlin supports a wide variety of controllers.
-// Enable one of the following options to specify your controller.
+// Note: Usually sold with a white PCB.
 //
+//#define REPRAP_DISCOUNT_SMART_CONTROLLER
 
 //
 // ULTIMAKER Controller.
@@ -1476,40 +1519,6 @@
 //#define PANEL_ONE
 
 //
-// MaKr3d Makr-Panel with graphic controller and SD support.
-// http://reprap.org/wiki/MaKr3d_MaKrPanel
-//
-//#define MAKRPANEL
-
-//
-// ReprapWorld Graphical LCD
-// https://reprapworld.com/?products_details&products_id/1218
-//
-//#define REPRAPWORLD_GRAPHICAL_LCD
-
-//
-// Activate one of these if you have a Panucatt Devices
-// Viki 2.0 or mini Viki with Graphic LCD
-// http://panucatt.com
-//
-//#define VIKI2
-//#define miniVIKI
-
-//
-// Adafruit ST7565 Full Graphic Controller.
-// https://github.com/eboston/Adafruit-ST7565-Full-Graphic-Controller/
-//
-//#define ELB_FULL_GRAPHIC_CONTROLLER
-
-//
-// RepRapDiscount Smart Controller.
-// http://reprap.org/wiki/RepRapDiscount_Smart_Controller
-//
-// Note: Usually sold with a white PCB.
-//
-//#define REPRAP_DISCOUNT_SMART_CONTROLLER
-
-//
 // GADGETS3D G3D LCD/SD Controller
 // http://reprap.org/wiki/RAMPS_1.3/1.4_GADGETS3D_Shield_with_Panel
 //
@@ -1518,69 +1527,34 @@
 //#define G3D_PANEL
 
 //
-// RepRapDiscount FULL GRAPHIC Smart Controller
-// http://reprap.org/wiki/RepRapDiscount_Full_Graphic_Smart_Controller
-//
-// Note: Details on connecting to the Anet V1.0 controller are in the file pins_ANET_10.h
-//
-//#define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
-
-//
-// MakerLab Mini Panel with graphic
-// controller and SD support - http://reprap.org/wiki/Mini_panel
-//
-//#define MINIPANEL
-
-//
-// RepRapWorld REPRAPWORLD_KEYPAD v1.1
-// http://reprapworld.com/?products_details&products_id=202&cPath=1591_1626
-//
-// REPRAPWORLD_KEYPAD_MOVE_STEP sets how much should the robot move when a key
-// is pressed, a value of 10.0 means 10mm per click.
-//
-//#define REPRAPWORLD_KEYPAD
-//#define REPRAPWORLD_KEYPAD_MOVE_STEP 1.0
-
-//
 // RigidBot Panel V1.0
 // http://www.inventapart.com/
 //
 //#define RIGIDBOT_PANEL
 
 //
-// BQ LCD Smart Controller shipped by
-// default with the BQ Hephestos 2 and Witbox 2.
+// Makeboard 3D Printer Parts 3D Printer Mini Display 1602 Mini Controller
+// https://www.aliexpress.com/item/Micromake-Makeboard-3D-Printer-Parts-3D-Printer-Mini-Display-1602-Mini-Controller-Compatible-with-Ramps-1/32765887917.html
 //
-//#define BQ_LCD_SMART_CONTROLLER
+//#define MAKEBOARD_MINI_2_LINE_DISPLAY_1602
 
 //
-// Cartesio UI
-// http://mauk.cc/webshop/cartesio-shop/electronics/user-interface
-//
-//#define CARTESIO_UI
-
-//
-// ANET and Tronxy Controller supported displays.
+// ANET and Tronxy 20x4 Controller
 //
 #define ZONESTAR_LCD              // Requires ADC_KEYPAD_PIN to be assigned to an analog pin.
                                   // This LCD is known to be susceptible to electrical interference
                                   // which scrambles the display.  Pressing any button clears it up.
                                   // This is a LCD2004 display with 5 analog buttons.
 
-//#define ANET_FULL_GRAPHICS_LCD  // Anet 128x64 full graphics lcd with rotary encoder as used on Anet A6
-                                  // A clone of the RepRapDiscount full graphics display but with
-                                  // different pins/wiring (see pins_ANET_10.h).
+//
+// Generic 16x2, 16x4, 20x2, or 20x4 character-based LCD.
+//
+//#define ULTRA_LCD
 
-//
-// LCD for Melzi Card with Graphical LCD
-//
-//#define LCD_FOR_MELZI
-
-//
-// LCD for Malyan M200 printers.
-// This requires SDSUPPORT to be enabled
-//
-//#define MALYAN_LCD
+//=============================================================================
+//======================== LCD / Controller Selection =========================
+//=====================   (I2C and Shift-Register LCDs)   =====================
+//=============================================================================
 
 //
 // CONTROLLER TYPE: I2C
@@ -1628,6 +1602,85 @@
 //#define LCD_I2C_VIKI
 
 //
+// CONTROLLER TYPE: Shift register panels
+//
+
+//
+// 2 wire Non-latching LCD SR from https://goo.gl/aJJ4sH
+// LCD configuration: http://reprap.org/wiki/SAV_3D_LCD
+//
+//#define SAV_3DLCD
+
+//=============================================================================
+//=======================   LCD / Controller Selection  =======================
+//=========================      (Graphical LCDs)      ========================
+//=============================================================================
+
+//
+// CONTROLLER TYPE: Graphical 128x64 (DOGM)
+//
+// IMPORTANT: The U8glib library is required for Graphical Display!
+//            https://github.com/olikraus/U8glib_Arduino
+//
+
+//
+// RepRapDiscount FULL GRAPHIC Smart Controller
+// http://reprap.org/wiki/RepRapDiscount_Full_Graphic_Smart_Controller
+//
+// Note: Details on connecting to the Anet V1.0 controller are in the file pins_ANET_10.h
+//
+//#define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
+
+//
+// ReprapWorld Graphical LCD
+// https://reprapworld.com/?products_details&products_id/1218
+//
+//#define REPRAPWORLD_GRAPHICAL_LCD
+
+//
+// Activate one of these if you have a Panucatt Devices
+// Viki 2.0 or mini Viki with Graphic LCD
+// http://panucatt.com
+//
+//#define VIKI2
+//#define miniVIKI
+
+//
+// MakerLab Mini Panel with graphic
+// controller and SD support - http://reprap.org/wiki/Mini_panel
+//
+//#define MINIPANEL
+
+//
+// MaKr3d Makr-Panel with graphic controller and SD support.
+// http://reprap.org/wiki/MaKr3d_MaKrPanel
+//
+//#define MAKRPANEL
+
+//
+// Adafruit ST7565 Full Graphic Controller.
+// https://github.com/eboston/Adafruit-ST7565-Full-Graphic-Controller/
+//
+//#define ELB_FULL_GRAPHIC_CONTROLLER
+
+//
+// BQ LCD Smart Controller shipped by
+// default with the BQ Hephestos 2 and Witbox 2.
+//
+//#define BQ_LCD_SMART_CONTROLLER
+
+//
+// Cartesio UI
+// http://mauk.cc/webshop/cartesio-shop/electronics/user-interface
+//
+//#define CARTESIO_UI
+
+//
+// LCD for Melzi Card with Graphical LCD
+//
+//#define LCD_FOR_MELZI
+
+//
 // SSD1306 OLED full graphics generic display
 //
 //#define U8GLIB_SSD1306
@@ -1648,23 +1701,9 @@
 //#define ULTI_CONTROLLER
 
 //
-// CONTROLLER TYPE: Shift register panels
-//
-// 2 wire Non-latching LCD SR from https://goo.gl/aJJ4sH
-// LCD configuration: http://reprap.org/wiki/SAV_3D_LCD
-//
-//#define SAV_3DLCD
-
-//
 // TinyBoy2 128x64 OLED / Encoder Panel
 //
 //#define OLED_PANEL_TINYBOY2
-
-//
-// Makeboard 3D Printer Parts 3D Printer Mini Display 1602 Mini Controller
-// https://www.aliexpress.com/item/Micromake-Makeboard-3D-Printer-Parts-3D-Printer-Mini-Display-1602-Mini-Controller-Compatible-with-Ramps-1/32765887917.html
-//
-//#define MAKEBOARD_MINI_2_LINE_DISPLAY_1602
 
 //
 // MKS MINI12864 with graphic controller and SD support
@@ -1682,6 +1721,13 @@
 //#define CR10_STOCKDISPLAY
 
 //
+// ANET and Tronxy Graphical Controller
+//
+//#define ANET_FULL_GRAPHICS_LCD  // Anet 128x64 full graphics lcd with rotary encoder as used on Anet A6
+                                  // A clone of the RepRapDiscount full graphics display but with
+                                  // different pins/wiring (see pins_ANET_10.h).
+
+//
 // MKS OLED 1.3" 128 × 64 FULL GRAPHICS CONTROLLER
 // http://reprap.org/wiki/MKS_12864OLED
 //
@@ -1695,6 +1741,34 @@
 // http://github.com/android444/Silvergate
 //
 //#define SILVER_GATE_GLCD_CONTROLLER
+
+//=============================================================================
+//============================  Other Controllers  ============================
+//=============================================================================
+
+//
+// CONTROLLER TYPE: Standalone / Serial
+//
+
+//
+// LCD for Malyan M200 printers.
+// This requires SDSUPPORT to be enabled
+//
+//#define MALYAN_LCD
+
+//
+// CONTROLLER TYPE: Keypad / Add-on
+//
+
+//
+// RepRapWorld REPRAPWORLD_KEYPAD v1.1
+// http://reprapworld.com/?products_details&products_id=202&cPath=1591_1626
+//
+// REPRAPWORLD_KEYPAD_MOVE_STEP sets how much should the robot move when a key
+// is pressed, a value of 10.0 means 10mm per click.
+//
+//#define REPRAPWORLD_KEYPAD
+//#define REPRAPWORLD_KEYPAD_MOVE_STEP 10.0
 
 //=============================================================================
 //=============================== Extra Features ==============================

@@ -32,7 +32,7 @@
  */
 #ifndef CONFIGURATION_ADV_H
 #define CONFIGURATION_ADV_H
-#define CONFIGURATION_ADV_H_VERSION 010107
+#define CONFIGURATION_ADV_H_VERSION 010109
 
 // @section temperature
 
@@ -182,10 +182,12 @@
 
 // @section temperature
 
-//These defines help to calibrate the AD595 sensor in case you get wrong temperature measurements.
-//The measured temperature is defined as "actualTemp = (measuredTemp * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET"
-#define TEMP_SENSOR_AD595_OFFSET 0.0
-#define TEMP_SENSOR_AD595_GAIN   1.0
+// Calibration for AD595 / AD8495 sensor to adjust temperature measurements.
+// The final temperature is calculated as (measuredTemp * GAIN) + OFFSET.
+#define TEMP_SENSOR_AD595_OFFSET  0.0
+#define TEMP_SENSOR_AD595_GAIN    1.0
+#define TEMP_SENSOR_AD8495_OFFSET 0.0
+#define TEMP_SENSOR_AD8495_GAIN   1.0
 
 /**
  * Controller Fan
@@ -206,10 +208,20 @@
 // before setting a PWM value. (Does not work with software PWM for fan on Sanguinololu)
 //#define FAN_KICKSTART_TIME 100
 
-// This defines the minimal speed for the main fan, run in PWM mode
-// to enable uncomment and set minimal PWM speed for reliable running (1-255)
-// if fan speed is [1 - (FAN_MIN_PWM-1)] it is set to FAN_MIN_PWM
+/**
+ * PWM Fan Scaling
+ *
+ * Define the min/max speeds for PWM fans (as set with M106).
+ *
+ * With these options the M106 0-255 value range is scaled to a subset
+ * to ensure that the fan has enough power to spin, or to run lower
+ * current fans with higher current. (e.g., 5V/12V fans with 12V/24V)
+ * Value 0 always turns off the fan.
+ *
+ * Define one or both of these to override the default 0-255 range.
+ */
 //#define FAN_MIN_PWM 50
+//#define FAN_MAX_PWM 128
 
 // @section extruder
 
@@ -230,6 +242,7 @@
 #define E2_AUTO_FAN_PIN -1
 #define E3_AUTO_FAN_PIN -1
 #define E4_AUTO_FAN_PIN -1
+#define CHAMBER_AUTO_FAN_PIN -1
 #define EXTRUDER_AUTO_FAN_TEMPERATURE 50
 #define EXTRUDER_AUTO_FAN_SPEED   255  // == full speed
 
@@ -428,8 +441,25 @@
 // if unwanted behavior is observed on a user's machine when running at very slow speeds.
 #define MINIMUM_PLANNER_SPEED 0.05 // (mm/sec)
 
+//
+// Use Junction Deviation instead of traditional Jerk Limiting
+//
+//#define JUNCTION_DEVIATION
+#if ENABLED(JUNCTION_DEVIATION)
+  #define JUNCTION_DEVIATION_MM 0.02  // (mm) Distance from real junction edge
+  //#define JUNCTION_DEVIATION_INCLUDE_E
+#endif
+
+/**
+ * Adaptive Step Smoothing increases the resolution of multi-axis moves, particularly at step frequencies
+ * below 1kHz (for AVR) or 10kHz (for ARM), where aliasing between axes in multi-axis moves causes audible
+ * vibration and surface artifacts. The algorithm adapts to provide the best possible step smoothing at the
+ * lowest stepping frequencies.
+ */
+//#define ADAPTIVE_STEP_SMOOTHING
+
 // Microstep setting (Only functional when stepper driver microstep pins are connected to MCU.
-#define MICROSTEP_MODES {16,16,16,16,16} // [1,2,4,8,16]
+#define MICROSTEP_MODES { 16, 16, 16, 16, 16 } // [1,2,4,8,16]
 
 /**
  *  @section  stepper motor current
@@ -492,9 +522,6 @@
 // Include a page of printer information in the LCD Main Menu
 #define LCD_INFO_MENU
 
-// Leave out seldom-used LCD menu items to recover some Program Memory
-//#define SLIM_LCD_MENUS
-
 // Scroll a longer status message into view
 #define STATUS_MESSAGE_SCROLLING
 
@@ -553,6 +580,16 @@
 
   // Add an option in the menu to run all auto#.g files
   //#define MENU_ADDAUTOSTART
+
+  /**
+   * Continue after Power-Loss (Creality3D)
+   *
+   * Store the current state to the SD Card at the start of each layer
+   * during SD printing. If the recovery file is found at boot time, present
+   * an option on the LCD screen to continue the print from the last-known
+   * point in the file.
+   */
+  //#define POWER_LOSS_RECOVERY
 
   /**
    * Sort SD file listings in alphabetical order.
@@ -771,10 +808,40 @@
 // Moves (or segments) with fewer steps than this will be joined with the next move
 #define MIN_STEPS_PER_SEGMENT 6
 
-// The minimum pulse width (in µs) for stepping a stepper.
-// Set this if you find stepping unreliable, or if using a very fast CPU.
-// 0 is OK for AVR, 0 is OK for A4989 drivers, 2 is needed for DRV8825 drivers
+/**
+ * Minimum delay after setting the stepper DIR (in ns)
+ *    0 : No delay (Expect at least 10µS since one Stepper ISR must transpire)
+ *   20 : Minimum for TMC2xxx drivers
+ *  200 : Minimum for A4988 drivers
+ *  500 : Minimum for LV8729 drivers (guess, no info in datasheet)
+ *  650 : Minimum for DRV8825 drivers
+ * 1500 : Minimum for TB6600 drivers (guess, no info in datasheet)
+ *15000 : Minimum for TB6560 drivers (guess, no info in datasheet)
+ */
+#define MINIMUM_STEPPER_DIR_DELAY 0
+
+/**
+ * Minimum stepper driver pulse width (in µs)
+ *   0 : Smallest possible width the MCU can produce, compatible with TMC2xxx drivers
+ *   1 : Minimum for A4988 stepper drivers
+ *   1 : Minimum for LV8729 stepper drivers
+ *   2 : Minimum for DRV8825 stepper drivers
+ *   3 : Minimum for TB6600 stepper drivers
+ *  30 : Minimum for TB6560 stepper drivers
+ */
 #define MINIMUM_STEPPER_PULSE 2
+
+/**
+ * Maximum stepping rate (in Hz) the stepper driver allows
+ *  If undefined, defaults to 1MHz / (2 * MINIMUM_STEPPER_PULSE)
+ *  500000 : Maximum for A4988 stepper driver
+ *  400000 : Maximum for TMC2xxx stepper drivers
+ *  250000 : Maximum for DRV8825 stepper driver
+ *  150000 : Maximum for TB6600 stepper driver
+ *  130000 : Maximum for LV8729 stepper driver
+ *   15000 : Maximum for TB6560 stepper driver
+ */
+#define MAXIMUM_STEPPER_RATE 250000
 
 // @section temperature
 
@@ -899,38 +966,44 @@
  */
 #define ADVANCED_PAUSE_FEATURE
 #if ENABLED(ADVANCED_PAUSE_FEATURE)
-  #define PAUSE_PARK_RETRACT_FEEDRATE 60      // (mm/s) Initial retract feedrate.
-  #define PAUSE_PARK_RETRACT_LENGTH 4         // (mm) Initial retract.
-                                              // This short retract is done immediately, before parking the nozzle.
-  #define FILAMENT_CHANGE_UNLOAD_FEEDRATE 41  // (mm/s) Unload filament feedrate. This can be pretty fast.
-  #define FILAMENT_CHANGE_UNLOAD_LENGTH 430   // (mm) The length of filament for a complete unload.
-                                              //   For Bowden, the full length of the tube and nozzle.
-                                              //   For direct drive, the full length of the nozzle.
-                                              //   Set to 0 for manual unloading.
-  #define FILAMENT_CHANGE_LOAD_FEEDRATE 41    // (mm/s) Load filament feedrate. This can be pretty fast.
-  #define FILAMENT_CHANGE_LOAD_LENGTH 430     // (mm) Load length of filament, from extruder gear to nozzle.
-                                              //   For Bowden, the full length of the tube and nozzle.
-                                              //   For direct drive, the full length of the nozzle.
-  #define ADVANCED_PAUSE_EXTRUDE_FEEDRATE 3   // (mm/s) Extrude feedrate (after loading). Should be slower than load feedrate.
-  #define ADVANCED_PAUSE_EXTRUDE_LENGTH 20    // (mm) Length to extrude after loading.
-                                              //   Set to 0 for manual extrusion.
-                                              //   Filament can be extruded repeatedly from the Filament Change menu
-                                              //   until extrusion is consistent, and to purge old filament.
+  #define PAUSE_PARK_RETRACT_FEEDRATE         60  // (mm/s) Initial retract feedrate.
+  #define PAUSE_PARK_RETRACT_LENGTH            4  // (mm) Initial retract.
+                                                  // This short retract is done immediately, before parking the nozzle.
+  #define FILAMENT_CHANGE_UNLOAD_FEEDRATE     41  // (mm/s) Unload filament feedrate. This can be pretty fast.
+  #define FILAMENT_CHANGE_UNLOAD_ACCEL        25  // (mm/s^2) Lower acceleration may allow a faster feedrate.
+  #define FILAMENT_CHANGE_UNLOAD_LENGTH      430  // (mm) The length of filament for a complete unload.
+                                                  //   For Bowden, the full length of the tube and nozzle.
+                                                  //   For direct drive, the full length of the nozzle.
+                                                  //   Set to 0 for manual unloading.
+  #define FILAMENT_CHANGE_SLOW_LOAD_FEEDRATE   6  // (mm/s) Slow move when starting load.
+  #define FILAMENT_CHANGE_SLOW_LOAD_LENGTH     0  // (mm) Slow length, to allow time to insert material.
+                                                  // 0 to disable start loading and skip to fast load only
+  #define FILAMENT_CHANGE_FAST_LOAD_FEEDRATE  41  // (mm/s) Load filament feedrate. This can be pretty fast.
+  #define FILAMENT_CHANGE_FAST_LOAD_ACCEL     25  // (mm/s^2) Lower acceleration may allow a faster feedrate.
+  #define FILAMENT_CHANGE_FAST_LOAD_LENGTH   430  // (mm) Load length of filament, from extruder gear to nozzle.
+                                                  //   For Bowden, the full length of the tube and nozzle.
+                                                  //   For direct drive, the full length of the nozzle.
+  //#define ADVANCED_PAUSE_CONTINUOUS_PURGE       // Purge continuously up to the purge length until interrupted.
+  #define ADVANCED_PAUSE_PURGE_FEEDRATE        3  // (mm/s) Extrude feedrate (after loading). Should be slower than load feedrate.
+  #define ADVANCED_PAUSE_PURGE_LENGTH         20  // (mm) Length to extrude after loading.
+                                                  //   Set to 0 for manual extrusion.
+                                                  //   Filament can be extruded repeatedly from the Filament Change menu
+                                                  //   until extrusion is consistent, and to purge old filament.
 
-                                              // Filament Unload does a Retract, Delay, and Purge first:
-  #define FILAMENT_UNLOAD_RETRACT_LENGTH 4    // (mm) Unload initial retract length.
-  #define FILAMENT_UNLOAD_DELAY 5000          // (ms) Delay for the filament to cool after retract.
-  #define FILAMENT_UNLOAD_PURGE_LENGTH 0      // (mm) An unretract is done, then this length is purged.
+                                                  // Filament Unload does a Retract, Delay, and Purge first:
+  #define FILAMENT_UNLOAD_RETRACT_LENGTH       4  // (mm) Unload initial retract length.
+  #define FILAMENT_UNLOAD_DELAY             5000  // (ms) Delay for the filament to cool after retract.
+  #define FILAMENT_UNLOAD_PURGE_LENGTH         0  // (mm) An unretract is done, then this length is purged.
 
-  #define PAUSE_PARK_NOZZLE_TIMEOUT 45        // (seconds) Time limit before the nozzle is turned off for safety.
-  #define FILAMENT_CHANGE_ALERT_BEEPS 6       // Number of alert beeps to play when a response is needed.
-  #define PAUSE_PARK_NO_STEPPER_TIMEOUT       // Enable for XYZ steppers to stay powered on during filament change.
+  #define PAUSE_PARK_NOZZLE_TIMEOUT           45  // (seconds) Time limit before the nozzle is turned off for safety.
+  #define FILAMENT_CHANGE_ALERT_BEEPS          6  // Number of alert beeps to play when a response is needed.
+  #define PAUSE_PARK_NO_STEPPER_TIMEOUT           // Enable for XYZ steppers to stay powered on during filament change.
 
-  #define PARK_HEAD_ON_PAUSE                  // Park the nozzle during pause and filament change.
-  #define HOME_BEFORE_FILAMENT_CHANGE         // Ensure homing has been completed prior to parking for filament change
+  #define PARK_HEAD_ON_PAUSE                      // Park the nozzle during pause and filament change.
+  #define HOME_BEFORE_FILAMENT_CHANGE             // Ensure homing has been completed prior to parking for filament change
 
-  //#define FILAMENT_LOAD_UNLOAD_GCODES       // Add M701/M702 Load/Unload G-codes, plus Load/Unload in the LCD Prepare menu.
-  //#define FILAMENT_UNLOAD_ALL_EXTRUDERS     // Allow M702 to unload all extruders above a minimum target temp (as set by M302)
+  //#define FILAMENT_LOAD_UNLOAD_GCODES           // Add M701/M702 Load/Unload G-codes, plus Load/Unload in the LCD Prepare menu.
+  //#define FILAMENT_UNLOAD_ALL_EXTRUDERS         // Allow M702 to unload all extruders above a minimum target temp (as set by M302)
 #endif
 
 // @section tmc
@@ -1201,7 +1274,7 @@
    *   stepperY.interpolate(0); \
    * }
    */
-  #define  TMC_ADV() {  }
+  #define TMC_ADV() {  }
 
 #endif // TMC2130 || TMC2208
 
@@ -1578,27 +1651,28 @@
 /**
  * MAX7219 Debug Matrix
  *
- * Add support for a low-cost 8x8 LED Matrix based on the Max7219 chip, which can be used as a status
- * display. Requires 3 signal wires. Some useful debug options are included to demonstrate its usage.
- *
- * Fully assembled MAX7219 boards can be found on the internet for under $2(US).
- * For example, see https://www.ebay.com/sch/i.html?_nkw=332349290049
+ * Add support for a low-cost 8x8 LED Matrix based on the Max7219 chip as a realtime status display.
+ * Requires 3 signal wires. Some useful debug options are included to demonstrate its usage.
  */
 //#define MAX7219_DEBUG
 #if ENABLED(MAX7219_DEBUG)
-  #define MAX7219_CLK_PIN   64  // 77 on Re-ARM       // Configuration of the 3 pins to control the display
-  #define MAX7219_DIN_PIN   57  // 78 on Re-ARM
-  #define MAX7219_LOAD_PIN  44  // 79 on Re-ARM
+  #define MAX7219_CLK_PIN   64
+  #define MAX7219_DIN_PIN   57
+  #define MAX7219_LOAD_PIN  44
+
+  //#define MAX7219_GCODE       // Add the M7219 G-code to control the LED matrix
+  #define MAX7219_INIT_TEST     // Do a test pattern at initialization (Set to 2 for spiral)
+  #define MAX7219_ROTATE     0  // Rotate the display clockwise (in multiples of +/- 90°)
 
   /**
    * Sample debug features
    * If you add more debug displays, be careful to avoid conflicts!
    */
   #define MAX7219_DEBUG_PRINTER_ALIVE    // Blink corner LED of 8x8 matrix to show that the firmware is functioning
-  #define MAX7219_DEBUG_STEPPER_HEAD  3  // Show the stepper queue head position on this and the next LED matrix row
-  #define MAX7219_DEBUG_STEPPER_TAIL  5  // Show the stepper queue tail position on this and the next LED matrix row
+  #define MAX7219_DEBUG_PLANNER_HEAD  3  // Show the planner queue head position on this and the next LED matrix row
+  #define MAX7219_DEBUG_PLANNER_TAIL  5  // Show the planner queue tail position on this and the next LED matrix row
 
-  #define MAX7219_DEBUG_STEPPER_QUEUE 0  // Show the current stepper queue depth on this and the next LED matrix row
+  #define MAX7219_DEBUG_PLANNER_QUEUE 0  // Show the current planner queue depth on this and the next LED matrix row
                                          // If you experience stuttering, reboots, etc. this option can reveal how
                                          // tweaks made to the configuration are affecting the printer in real-time.
 #endif
