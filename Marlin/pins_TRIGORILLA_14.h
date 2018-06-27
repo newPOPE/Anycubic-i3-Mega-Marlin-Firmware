@@ -31,7 +31,6 @@
 #define BOARD_NAME         "TRIGORILLA"
 #define LARGE_FLASH        true
 
-<<<<<<< HEAD:Marlin/pins_TRIGORILLA.h
 // Misc PINs
 #define BUZZER 			   31
 #define SDPOWER            -1

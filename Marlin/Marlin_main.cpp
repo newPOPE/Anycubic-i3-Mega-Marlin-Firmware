@@ -8370,16 +8370,12 @@ inline void gcode_M109() {
       }
 
     } while (wait_for_heatup && TEMP_BED_CONDITIONS);
-
-<<<<<<< HEAD
+    
     #ifdef ANYCUBIC_TFT_MODEL
     AnycubicTFT.BedHeatingDone();
     #endif
     
-    if (wait_for_heatup) LCD_MESSAGEPGM(MSG_BED_DONE);
-=======
     if (wait_for_heatup) lcd_reset_status();
->>>>>>> official/bugfix-1.1.x
     #if DISABLED(BUSY_WHILE_HEATING)
       KEEPALIVE_STATE(IN_HANDLER);
     #endif
