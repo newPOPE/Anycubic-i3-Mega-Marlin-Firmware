@@ -75,7 +75,7 @@
 #define Z_MIN_PIN          18
 
 #define X_MAX_PIN          43
-#define Y_MAX_PIN          -1 
+#define Y_MAX_PIN          -1
 #define Z_MAX_PIN          -1
 
 // Fans
@@ -98,19 +98,19 @@
 // Servos
 #ifdef NUM_SERVOS
 	#define SERVO0_PIN      11
-	
+
 	#if NUM_SERVOS > 1
 		#define SERVO1_PIN    6
 	#endif
-	
+
 	#if NUM_SERVOS > 2
 		#define SERVO2_PIN    5
 	#endif
-	
+
 	#if NUM_SERVOS > 3
 		#define SERVO3_PIN    4
 	#endif
-#endif	
+#endif
 
 #if defined(ANYCUBIC_TFT_MODEL)
   #define BEEPER_PIN       31
@@ -132,14 +132,14 @@
 		#define LCD_PINS_D5 25
 		#define LCD_PINS_D6 27
 		#define LCD_PINS_D7 29
-		
+
 		#ifdef REPRAP_DISCOUNT_SMART_CONTROLLER
 			#define BEEPER_PIN 31
-			
+
 			#define BTN_EN1 33
 			#define BTN_EN2 33
 			#define BTN_ENC 35
-			
+
 			#define SD_DETECT_PIN 49
 			#elif defined(LCD_I2C_PANELOLU2)
 				#define BTN_EN1 47  //reverse if the encoder turns the wrong way.
@@ -199,7 +199,7 @@
 			#else
 				//arduino pin which triggers an piezzo beeper
 				#define BEEPER_PIN 31  // Beeper on AUX-4
-			
+
 			//buttons are directly attached using AUX-2
 			#ifdef REPRAPWORLD_KEYPAD
 				#define BTN_EN1 64 // encoder
@@ -213,21 +213,21 @@
 				#define BTN_EN2 35
 				#define BTN_ENC -1  //the click
 			#endif
-			
+
 			#ifdef G3D_PANEL
 				#define SD_DETECT_PIN 49
 				#else
 				#define SD_DETECT_PIN -1  // Ramps does not use this port
 			#endif
-			
+
 		#endif
-		
+
 		#define LCD_PINS_RS 16
 		#define LCD_PINS_ENABLE 17
 		#define LCD_PINS_D4 23
 		#define LCD_PINS_D5 25
 		#define LCD_PINS_D6 27
 		#define LCD_PINS_D7 29
-		
+
 	#endif
-#endif	
+#endif

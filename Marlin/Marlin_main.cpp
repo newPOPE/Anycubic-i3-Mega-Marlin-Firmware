@@ -1224,7 +1224,7 @@ inline void get_serial_commands() {
       if (job_recovery_commands_count) {
         if (_enqueuecommand(job_recovery_commands[job_recovery_commands_index])) {
           ++job_recovery_commands_index;
-          if (!--job_recovery_commands_count) job_recovery_phase = JOB_RECOVERY_IDLE;
+          if (!--job_recovery_commands_count) job_recovery_phase = JOB_RECOVERY_DONE;
         }
         return true;
       }
@@ -2246,7 +2246,6 @@ void clean_up_after_endstop_or_probe_move() {
       if (probe_triggered && set_bltouch_deployed(false)) return true;
     #endif
 
-    // Clear endstop flags
     endstops.hit_on_purpose();
 
     // Get Z where the steppers were interrupted
@@ -2993,6 +2992,7 @@ static void do_homing_move(const AxisEnum axis, const float distance, const floa
   // Tell the planner the axis is at 0
   current_position[axis] = 0;
 
+  // Do the move, which is required to hit an endstop
   #if IS_SCARA
     SYNC_PLAN_POSITION_KINEMATIC();
     current_position[axis] = distance;
@@ -3019,7 +3019,7 @@ static void do_homing_move(const AxisEnum axis, const float distance, const floa
       #endif
     }
 
-    endstops.hit_on_purpose();
+    endstops.validate_homing_move();
 
     // Re-enable stealthChop if used. Disable diag1 pin on driver.
     #if ENABLED(SENSORLESS_HOMING)
@@ -3046,8 +3046,6 @@ static void do_homing_move(const AxisEnum axis, const float distance, const floa
  * Kinematic robots should wait till all axes are homed
  * before updating the current position.
  */
-
-#define HOMEAXIS(A) homeaxis(_AXIS(A))
 
 static void homeaxis(const AxisEnum axis) {
 
@@ -3731,7 +3729,9 @@ inline void gcode_G4() {
     #endif
 
     do_blocking_move_to_xy(1.5 * mlx * x_axis_home_dir, 1.5 * mly * home_dir(Y_AXIS), fr_mm_s);
-    endstops.hit_on_purpose(); // clear endstop hit flags
+
+    endstops.validate_homing_move();
+
     current_position[X_AXIS] = current_position[Y_AXIS] = 0.0;
 
     #if ENABLED(SENSORLESS_HOMING)
@@ -3911,7 +3911,7 @@ inline void gcode_G4() {
    * A delta can only safely home all axes at the same time
    * This is like quick_home_xy() but for 3 towers.
    */
-  inline bool home_delta() {
+  inline void home_delta() {
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS(">>> home_delta", current_position);
     #endif
@@ -3935,22 +3935,13 @@ inline void gcode_G4() {
       delta_sensorless_homing(false);
     #endif
 
-    // If an endstop was not hit, then damage can occur if homing is continued.
-    // This can occur if the delta height not set correctly.
-    if (!(endstops.trigger_state() & (_BV(X_MAX) | _BV(Y_MAX) | _BV(Z_MAX)))) {
-      LCD_MESSAGEPGM(MSG_ERR_HOMING_FAILED);
-      SERIAL_ERROR_START();
-      SERIAL_ERRORLNPGM(MSG_ERR_HOMING_FAILED);
-      return false;
-    }
-
-    endstops.hit_on_purpose(); // clear endstop hit flags
+    endstops.validate_homing_move();
 
     // At least one carriage has reached the top.
     // Now re-home each carriage separately.
-    HOMEAXIS(A);
-    HOMEAXIS(B);
-    HOMEAXIS(C);
+    homeaxis(A_AXIS);
+    homeaxis(B_AXIS);
+    homeaxis(C_AXIS);
 
     // Set all carriages to their home positions
     // Do this here all at once for Delta, because
@@ -3963,8 +3954,6 @@ inline void gcode_G4() {
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS("<<< home_delta", current_position);
     #endif
-
-    return true;
   }
 
 #endif // DELTA
@@ -4024,7 +4013,7 @@ inline void gcode_G4() {
       #endif
 
       do_blocking_move_to_xy(destination[X_AXIS], destination[Y_AXIS]);
-      HOMEAXIS(Z);
+      homeaxis(Z_AXIS);
     }
     else {
       LCD_MESSAGEPGM(MSG_ZPROBE_OUT);
@@ -4068,8 +4057,21 @@ inline void gcode_G28(const bool always_home_all) {
 
   #if ENABLED(DEBUG_LEVELING_FEATURE)
     if (DEBUGGING(LEVELING)) {
-      SERIAL_ECHOLNPGM(">>> gcode_G28");
+      SERIAL_ECHOLNPGM(">>> G28");
       log_machine_info();
+    }
+  #endif
+
+  #if ENABLED(MARLIN_DEV_MODE)
+    if (parser.seen('S')) {
+      LOOP_XYZ(a) set_axis_is_at_home((AxisEnum)a);
+      SYNC_PLAN_POSITION_KINEMATIC();
+      SERIAL_ECHOLNPGM("Simulated Homing");
+      report_current_position();
+      #if ENABLED(DEBUG_LEVELING_FEATURE)
+        if (DEBUGGING(LEVELING)) SERIAL_ECHOLNPGM("<<< G28");
+      #endif
+      return;
     }
   #endif
 
@@ -4142,7 +4144,7 @@ inline void gcode_G28(const bool always_home_all) {
 
     #if Z_HOME_DIR > 0  // If homing away from BED do Z first
 
-      if (home_all || homeZ) HOMEAXIS(Z);
+      if (home_all || homeZ) homeaxis(Z_AXIS);
 
     #endif
 
@@ -4180,7 +4182,7 @@ inline void gcode_G28(const bool always_home_all) {
         #if ENABLED(CODEPENDENT_XY_HOMING)
           || homeX
         #endif
-      ) HOMEAXIS(Y);
+      ) homeaxis(Y_AXIS);
 
     #endif
 
@@ -4195,14 +4197,14 @@ inline void gcode_G28(const bool always_home_all) {
 
         // Always home the 2nd (right) extruder first
         active_extruder = 1;
-        HOMEAXIS(X);
+        homeaxis(X_AXIS);
 
         // Remember this extruder's position for later tool change
         inactive_extruder_x_pos = current_position[X_AXIS];
 
         // Home the 1st (left) extruder
         active_extruder = 0;
-        HOMEAXIS(X);
+        homeaxis(X_AXIS);
 
         // Consider the active extruder to be parked
         COPY(raised_parked_position, current_position);
@@ -4211,14 +4213,14 @@ inline void gcode_G28(const bool always_home_all) {
 
       #else
 
-        HOMEAXIS(X);
+        homeaxis(X_AXIS);
 
       #endif
     }
 
     // Home Y (after X)
     #if DISABLED(HOME_Y_BEFORE_X)
-      if (home_all || homeY) HOMEAXIS(Y);
+      if (home_all || homeY) homeaxis(Y_AXIS);
     #endif
 
     // Home Z last if homing towards the bed
@@ -4227,7 +4229,7 @@ inline void gcode_G28(const bool always_home_all) {
         #if ENABLED(Z_SAFE_HOMING)
           home_z_safely();
         #else
-          HOMEAXIS(Z);
+          homeaxis(Z_AXIS);
         #endif
 
         #if HOMING_Z_WITH_PROBE && defined(Z_AFTER_PROBING)
@@ -4279,7 +4281,7 @@ inline void gcode_G28(const bool always_home_all) {
   #endif
 
   #if ENABLED(DEBUG_LEVELING_FEATURE)
-    if (DEBUGGING(LEVELING)) SERIAL_ECHOLNPGM("<<< gcode_G28");
+    if (DEBUGGING(LEVELING)) SERIAL_ECHOLNPGM("<<< G28");
   #endif
 } // G28
 
@@ -5520,12 +5522,10 @@ void home_all_axes() { gcode_G28(true); }
 
   float lcd_probe_pt(const float &rx, const float &ry);
 
-  bool ac_home() {
+  void ac_home() {
     endstops.enable(true);
-    if (!home_delta())
-      return false;
+    home_delta();
     endstops.not_homing();
-    return true;
   }
 
   void ac_setup(const bool reset_bed) {
@@ -5695,7 +5695,7 @@ void home_all_axes() { gcode_G28(true); }
       }
 
       if (_7p_calibration) { // probe extra center points
-        const float start  = _7p_9_center ? _CA + _7P_STEP / 3.0 : _7p_6_center ? _CA : __C,
+        const float start  = _7p_9_center ? float(_CA) + _7P_STEP / 3.0 : _7p_6_center ? float(_CA) : float(__C),
                     steps  = _7p_9_center ? _4P_STEP / 3.0 : _7p_6_center ? _7P_STEP : _4P_STEP;
         I_LOOP_CAL_PT(rad, start, steps) {
           const float a = RADIANS(210 + (360 / NPP) *  (rad - 1)),
@@ -5978,8 +5978,7 @@ void home_all_axes() { gcode_G28(true); }
 
     ac_setup(!_0p_calibration && !_1p_calibration);
 
-    if (!_0p_calibration)
-      if (!ac_home()) return;
+    if (!_0p_calibration) ac_home();
 
     do { // start iterations
 
@@ -6172,7 +6171,7 @@ void home_all_axes() { gcode_G28(true); }
           sprintf_P(&mess[15], PSTR("%03i.x"), (int)round(zero_std_dev));
         lcd_setstatus(mess);
       }
-      if (!ac_home()) return;
+      ac_home();
     }
     while (((zero_std_dev < test_precision && iterations < 31) || iterations <= force_iterations) && zero_std_dev > calibration_precision);
 
@@ -7095,6 +7094,9 @@ inline void gcode_M17() {
    * M23: Open a file
    */
   inline void gcode_M23() {
+    #if ENABLED(POWER_LOSS_RECOVERY)
+      card.removeJobRecoveryFile();
+    #endif
     // Simplify3D includes the size, so zero out all spaces (#7227)
     for (char *fn = parser.string_arg; *fn; ++fn) if (*fn == ' ') *fn = '\0';
     card.openFile(parser.string_arg, true);
@@ -7104,16 +7106,22 @@ inline void gcode_M17() {
    * M24: Start or Resume SD Print
    */
   inline void gcode_M24() {
-    #if ENABLED(POWER_LOSS_RECOVERY)
-      card.removeJobRecoveryFile();
-    #endif
-
     #if ENABLED(PARK_HEAD_ON_PAUSE)
       resume_print();
     #endif
 
+    #if ENABLED(POWER_LOSS_RECOVERY)
+      if (parser.seenval('S')) card.setIndex(parser.value_long());
+    #endif
+
     card.startFileprint();
-    print_job_timer.start();
+
+    #if ENABLED(POWER_LOSS_RECOVERY)
+      if (parser.seenval('T'))
+        print_job_timer.resume(parser.value_long());
+      else
+    #endif
+        print_job_timer.start();
   }
 
   /**
@@ -11312,58 +11320,70 @@ inline void gcode_M502() {
         const int8_t value = (int8_t)constrain(parser.value_int(), -64, 63);
         report = false;
         switch (i) {
-          case X_AXIS:
-            #if ENABLED(X_IS_TMC2130) || ENABLED(IS_TRAMS)
-              if (index == 0) TMC_SET_SGT(X);
-            #endif
-            #if ENABLED(X2_IS_TMC2130)
-              if (index == 1) TMC_SET_SGT(X2);
-            #endif
-            break;
-          case Y_AXIS:
-            #if ENABLED(Y_IS_TMC2130) || ENABLED(IS_TRAMS)
-              if (index == 0) TMC_SET_SGT(Y);
-            #endif
-            #if ENABLED(Y2_IS_TMC2130)
-              if (index == 1) TMC_SET_SGT(Y2);
-            #endif
-            break;
-          case Z_AXIS:
-            #if ENABLED(Z_IS_TMC2130) || ENABLED(IS_TRAMS)
-              if (index == 0) TMC_SET_SGT(Z);
-            #endif
-            #if ENABLED(Z2_IS_TMC2130)
-              if (index == 1) TMC_SET_SGT(Z2);
-            #endif
-            break;
+          #if X_SENSORLESS
+            case X_AXIS:
+              #if ENABLED(X_IS_TMC2130) || ENABLED(IS_TRAMS)
+                if (index == 0) TMC_SET_SGT(X);
+              #endif
+              #if ENABLED(X2_IS_TMC2130)
+                if (index == 1) TMC_SET_SGT(X2);
+              #endif
+              break;
+          #endif
+          #if Y_SENSORLESS
+            case Y_AXIS:
+              #if ENABLED(Y_IS_TMC2130) || ENABLED(IS_TRAMS)
+                if (index == 0) TMC_SET_SGT(Y);
+              #endif
+              #if ENABLED(Y2_IS_TMC2130)
+                if (index == 1) TMC_SET_SGT(Y2);
+              #endif
+              break;
+          #endif
+          #if Z_SENSORLESS
+            case Z_AXIS:
+              #if ENABLED(Z_IS_TMC2130) || ENABLED(IS_TRAMS)
+                if (index == 0) TMC_SET_SGT(Z);
+              #endif
+              #if ENABLED(Z2_IS_TMC2130)
+                if (index == 1) TMC_SET_SGT(Z2);
+              #endif
+              break;
+          #endif
         }
       }
 
       if (report) LOOP_XYZ(i) switch (i) {
-        case X_AXIS:
-          #if ENABLED(X_IS_TMC2130) || ENABLED(IS_TRAMS)
-            TMC_SAY_SGT(X);
-          #endif
-          #if ENABLED(X2_IS_TMC2130)
-            TMC_SAY_SGT(X2);
-          #endif
-          break;
-        case Y_AXIS:
-          #if ENABLED(Y_IS_TMC2130) || ENABLED(IS_TRAMS)
-            TMC_SAY_SGT(Y);
-          #endif
-          #if ENABLED(Y2_IS_TMC2130)
-            TMC_SAY_SGT(Y2);
-          #endif
-          break;
-        case Z_AXIS:
-          #if ENABLED(Z_IS_TMC2130) || ENABLED(IS_TRAMS)
-            TMC_SAY_SGT(Z);
-          #endif
-          #if ENABLED(Z2_IS_TMC2130)
-            TMC_SAY_SGT(Z2);
-          #endif
-          break;
+        #if X_SENSORLESS
+          case X_AXIS:
+            #if ENABLED(X_IS_TMC2130) || ENABLED(IS_TRAMS)
+              TMC_SAY_SGT(X);
+            #endif
+            #if ENABLED(X2_IS_TMC2130)
+              TMC_SAY_SGT(X2);
+            #endif
+            break;
+        #endif
+        #if Y_SENSORLESS
+          case Y_AXIS:
+            #if ENABLED(Y_IS_TMC2130) || ENABLED(IS_TRAMS)
+              TMC_SAY_SGT(Y);
+            #endif
+            #if ENABLED(Y2_IS_TMC2130)
+              TMC_SAY_SGT(Y2);
+            #endif
+            break;
+        #endif
+        #if Z_SENSORLESS
+          case Z_AXIS:
+            #if ENABLED(Z_IS_TMC2130) || ENABLED(IS_TRAMS)
+              TMC_SAY_SGT(Z);
+            #endif
+            #if ENABLED(Z2_IS_TMC2130)
+              TMC_SAY_SGT(Z2);
+            #endif
+            break;
+        #endif
       }
     }
   #endif // SENSORLESS_HOMING
@@ -13383,7 +13403,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
                   ediff * inv_segments
                 };
 
-    #if DISABLED(SCARA_FEEDRATE_SCALING)
+    #if !HAS_FEEDRATE_SCALING
       const float cartesian_segment_mm = cartesian_mm * inv_segments;
     #endif
 
@@ -13391,14 +13411,13 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     SERIAL_ECHOPAIR("mm=", cartesian_mm);
     SERIAL_ECHOPAIR(" seconds=", seconds);
     SERIAL_ECHOPAIR(" segments=", segments);
-    #if DISABLED(SCARA_FEEDRATE_SCALING)
-      SERIAL_ECHOLNPAIR(" segment_mm=", cartesian_segment_mm);
-    #else
-      SERIAL_EOL();
+    #if !HAS_FEEDRATE_SCALING
+      SERIAL_ECHOPAIR(" segment_mm=", cartesian_segment_mm);
     #endif
+    SERIAL_EOL();
     //*/
 
-    #if ENABLED(SCARA_FEEDRATE_SCALING)
+    #if HAS_FEEDRATE_SCALING
       // SCARA needs to scale the feed rate from mm/s to degrees/s
       // i.e., Complete the angular vector in the given time.
       const float segment_length = cartesian_mm * inv_segments,
@@ -13406,7 +13425,11 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
                   inverse_secs = inv_segment_length * _feedrate_mm_s;
 
       float oldA = planner.position_float[A_AXIS],
-            oldB = planner.position_float[B_AXIS];
+            oldB = planner.position_float[B_AXIS]
+            #if ENABLED(DELTA_FEEDRATE_SCALING)
+              , oldC = planner.position_float[C_AXIS]
+            #endif
+            ;
 
       /*
       SERIAL_ECHOPGM("Scaled kinematic move: ");
@@ -13415,7 +13438,11 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
       SERIAL_ECHOPAIR(") _feedrate_mm_s=", _feedrate_mm_s);
       SERIAL_ECHOPAIR(" inverse_secs=", inverse_secs);
       SERIAL_ECHOPAIR(" oldA=", oldA);
-      SERIAL_ECHOLNPAIR(" oldB=", oldB);
+      SERIAL_ECHOPAIR(" oldB=", oldB);
+      #if ENABLED(DELTA_FEEDRATE_SCALING)
+        SERIAL_ECHOPAIR(" oldC=", oldC);
+      #endif
+      SERIAL_EOL();
       safe_delay(5);
       //*/
     #endif
@@ -13456,6 +13483,19 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
         safe_delay(5);
         //*/
         oldA = delta[A_AXIS]; oldB = delta[B_AXIS];
+      #elif ENABLED(DELTA_FEEDRATE_SCALING)
+        // For DELTA scale the feed rate from Effector mm/s to Carriage mm/s
+        // i.e., Complete the linear vector in the given time.
+        if (!planner.buffer_segment(delta[A_AXIS], delta[B_AXIS], delta[C_AXIS], raw[E_AXIS], SQRT(sq(delta[A_AXIS] - oldA) + sq(delta[B_AXIS] - oldB) + sq(delta[C_AXIS] - oldC)) * inverse_secs, active_extruder))
+          break;
+        /*
+        SERIAL_ECHO(segments);
+        SERIAL_ECHOPAIR(": X=", raw[X_AXIS]); SERIAL_ECHOPAIR(" Y=", raw[Y_AXIS]);
+        SERIAL_ECHOPAIR(" A=", delta[A_AXIS]); SERIAL_ECHOPAIR(" B=", delta[B_AXIS]); SERIAL_ECHOPAIR(" C=", delta[C_AXIS]);
+        SERIAL_ECHOLNPAIR(" F", SQRT(sq(delta[A_AXIS] - oldA) + sq(delta[B_AXIS] - oldB) + sq(delta[C_AXIS] - oldC)) * inverse_secs * 60);
+        safe_delay(5);
+        //*/
+        oldA = delta[A_AXIS]; oldB = delta[B_AXIS]; oldC = delta[C_AXIS];
       #else
         if (!planner.buffer_line(delta[A_AXIS], delta[B_AXIS], delta[C_AXIS], raw[E_AXIS], _feedrate_mm_s, active_extruder, cartesian_segment_mm))
           break;
@@ -13463,16 +13503,31 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     }
 
     // Ensure last segment arrives at target location.
-    #if ENABLED(SCARA_FEEDRATE_SCALING)
+    #if HAS_FEEDRATE_SCALING
       inverse_kinematics(rtarget);
       ADJUST_DELTA(rtarget);
+    #endif
+
+    #if ENABLED(SCARA_FEEDRATE_SCALING)
       const float diff2 = HYPOT2(delta[A_AXIS] - oldA, delta[B_AXIS] - oldB);
       if (diff2) {
         planner.buffer_segment(delta[A_AXIS], delta[B_AXIS], rtarget[Z_AXIS], rtarget[E_AXIS], SQRT(diff2) * inverse_secs, active_extruder);
         /*
         SERIAL_ECHOPAIR("final: A=", delta[A_AXIS]); SERIAL_ECHOPAIR(" B=", delta[B_AXIS]);
         SERIAL_ECHOPAIR(" adiff=", delta[A_AXIS] - oldA); SERIAL_ECHOPAIR(" bdiff=", delta[B_AXIS] - oldB);
-        SERIAL_ECHOLNPAIR(" F", (SQRT(diff2) * inverse_secs) * 60);
+        SERIAL_ECHOLNPAIR(" F", SQRT(diff2) * inverse_secs * 60);
+        SERIAL_EOL();
+        safe_delay(5);
+        //*/
+      }
+    #elif ENABLED(DELTA_FEEDRATE_SCALING)
+      const float diff2 = sq(delta[A_AXIS] - oldA) + sq(delta[B_AXIS] - oldB) + sq(delta[C_AXIS] - oldC);
+      if (diff2) {
+        planner.buffer_segment(delta[A_AXIS], delta[B_AXIS], delta[C_AXIS], rtarget[E_AXIS], SQRT(diff2) * inverse_secs, active_extruder);
+        /*
+        SERIAL_ECHOPAIR("final: A=", delta[A_AXIS]); SERIAL_ECHOPAIR(" B=", delta[B_AXIS]); SERIAL_ECHOPAIR(" C=", delta[C_AXIS]);
+        SERIAL_ECHOPAIR(" adiff=", delta[A_AXIS] - oldA); SERIAL_ECHOPAIR(" bdiff=", delta[B_AXIS] - oldB); SERIAL_ECHOPAIR(" cdiff=", delta[C_AXIS] - oldC);
+        SERIAL_ECHOLNPAIR(" F", SQRT(diff2) * inverse_secs * 60);
         SERIAL_EOL();
         safe_delay(5);
         //*/
@@ -13758,12 +13813,16 @@ void prepare_move_to_destination() {
 
     millis_t next_idle_ms = millis() + 200UL;
 
-    #if ENABLED(SCARA_FEEDRATE_SCALING)
+    #if HAS_FEEDRATE_SCALING
       // SCARA needs to scale the feed rate from mm/s to degrees/s
       const float inv_segment_length = 1.0 / (MM_PER_ARC_SEGMENT),
                   inverse_secs = inv_segment_length * fr_mm_s;
       float oldA = planner.position_float[A_AXIS],
-            oldB = planner.position_float[B_AXIS];
+            oldB = planner.position_float[B_AXIS]
+            #if ENABLED(DELTA_FEEDRATE_SCALING)
+              , oldC = planner.position_float[C_AXIS]
+            #endif
+            ;
     #endif
 
     #if N_ARC_CORRECTION > 1
@@ -13809,14 +13868,23 @@ void prepare_move_to_destination() {
 
       clamp_to_software_endstops(raw);
 
+      #if HAS_FEEDRATE_SCALING
+        inverse_kinematics(raw);
+        ADJUST_DELTA(raw);
+      #endif
+
       #if ENABLED(SCARA_FEEDRATE_SCALING)
         // For SCARA scale the feed rate from mm/s to degrees/s
         // i.e., Complete the angular vector in the given time.
-        inverse_kinematics(raw);
-        ADJUST_DELTA(raw);
         if (!planner.buffer_segment(delta[A_AXIS], delta[B_AXIS], raw[Z_AXIS], raw[E_AXIS], HYPOT(delta[A_AXIS] - oldA, delta[B_AXIS] - oldB) * inverse_secs, active_extruder))
           break;
         oldA = delta[A_AXIS]; oldB = delta[B_AXIS];
+      #elif ENABLED(DELTA_FEEDRATE_SCALING)
+        // For DELTA scale the feed rate from Effector mm/s to Carriage mm/s
+        // i.e., Complete the linear vector in the given time.
+        if (!planner.buffer_segment(delta[A_AXIS], delta[B_AXIS], delta[C_AXIS], raw[E_AXIS], SQRT(sq(delta[A_AXIS] - oldA) + sq(delta[B_AXIS] - oldB) + sq(delta[C_AXIS] - oldC)) * inverse_secs, active_extruder))
+          break;
+        oldA = delta[A_AXIS]; oldB = delta[B_AXIS]; oldC = delta[C_AXIS];
       #elif HAS_UBL_AND_CURVES
         float pos[XYZ] = { raw[X_AXIS], raw[Y_AXIS], raw[Z_AXIS] };
         planner.apply_leveling(pos);
@@ -13829,12 +13897,19 @@ void prepare_move_to_destination() {
     }
 
     // Ensure last segment arrives at target location.
-    #if ENABLED(SCARA_FEEDRATE_SCALING)
+    #if HAS_FEEDRATE_SCALING
       inverse_kinematics(cart);
       ADJUST_DELTA(cart);
+    #endif
+
+    #if ENABLED(SCARA_FEEDRATE_SCALING)
       const float diff2 = HYPOT2(delta[A_AXIS] - oldA, delta[B_AXIS] - oldB);
       if (diff2)
         planner.buffer_segment(delta[A_AXIS], delta[B_AXIS], cart[Z_AXIS], cart[E_AXIS], SQRT(diff2) * inverse_secs, active_extruder);
+    #elif ENABLED(DELTA_FEEDRATE_SCALING)
+      const float diff2 = sq(delta[A_AXIS] - oldA) + sq(delta[B_AXIS] - oldB) + sq(delta[C_AXIS] - oldC);
+      if (diff2)
+        planner.buffer_segment(delta[A_AXIS], delta[B_AXIS], delta[C_AXIS], cart[E_AXIS], SQRT(diff2) * inverse_secs, active_extruder);
     #elif HAS_UBL_AND_CURVES
       float pos[XYZ] = { cart[X_AXIS], cart[Y_AXIS], cart[Z_AXIS] };
       planner.apply_leveling(pos);
@@ -14637,7 +14712,7 @@ void setup() {
   #endif
 
   #if ENABLED(POWER_LOSS_RECOVERY)
-    do_print_job_recovery();
+    check_print_job_recovery();
   #endif
 
   #if ENABLED(USE_WATCHDOG)
@@ -14679,6 +14754,9 @@ void loop() {
           for (uint8_t i = 0; i < FAN_COUNT; i++) fanSpeeds[i] = 0;
         #endif
         wait_for_heatup = false;
+        #if ENABLED(POWER_LOSS_RECOVERY)
+          card.removeJobRecoveryFile();
+        #endif
       }
     #endif
 

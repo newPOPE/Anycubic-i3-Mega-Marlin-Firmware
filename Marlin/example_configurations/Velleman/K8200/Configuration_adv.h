@@ -450,7 +450,6 @@
 //#define JUNCTION_DEVIATION
 #if ENABLED(JUNCTION_DEVIATION)
   #define JUNCTION_DEVIATION_MM 0.02  // (mm) Distance from real junction edge
-  //#define JUNCTION_DEVIATION_INCLUDE_E
 #endif
 
 /**
@@ -1692,5 +1691,8 @@
   //#define NANODLP_ALL_AXIS  // Enables "Z_move_comp" output on any axis move.
                               // Default behaviour is limited to Z axis only.
 #endif
+
+// Enable Marlin dev mode which adds some special commands
+//#define MARLIN_DEV_MODE
 
 #endif // CONFIGURATION_ADV_H
