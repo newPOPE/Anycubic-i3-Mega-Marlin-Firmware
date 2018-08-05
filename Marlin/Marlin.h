@@ -193,8 +193,8 @@ extern bool Running;
 inline bool IsRunning() { return  Running; }
 inline bool IsStopped() { return !Running; }
 
-bool enqueue_and_echo_command(const char* cmd, bool say_ok=false); // Add a single command to the end of the buffer. Return false on failure.
-void enqueue_and_echo_commands_P(const char * const cmd);          // Set one or more commands to be prioritized over the next Serial/SD command.
+bool enqueue_and_echo_command(const char* cmd);           // Add a single command to the end of the buffer. Return false on failure.
+void enqueue_and_echo_commands_P(const char * const cmd); // Set one or more commands to be prioritized over the next Serial/SD command.
 void clear_command_queue();
 
 #if ENABLED(M100_FREE_MEMORY_WATCHER) || ENABLED(POWER_LOSS_RECOVERY)
@@ -220,7 +220,7 @@ inline void reset_stepper_timeout() { previous_move_ms = millis(); }
 extern float feedrate_mm_s;
 extern int16_t feedrate_percentage;
 
-#define MMS_SCALED(MM_S) ((MM_S)*feedrate_percentage*0.01)
+#define MMS_SCALED(MM_S) ((MM_S)*feedrate_percentage*0.01f)
 
 extern bool axis_relative_modes[XYZE];
 
@@ -299,6 +299,10 @@ extern float soft_endstop_min[XYZ], soft_endstop_max[XYZ];
   bool select_coordinate_system(const int8_t _new);
 #endif
 
+void tool_change(const uint8_t tmp_extruder, const float fr_mm_s=0.0, bool no_move=false);
+
+void  home_all_axes();
+
 void report_current_position();
 
 #if IS_KINEMATIC
@@ -321,22 +325,15 @@ void report_current_position();
   void recalc_delta_settings();
   float delta_safe_distance_from_top();
 
-  #if ENABLED(DELTA_FAST_SQRT)
-    float Q_rsqrt(const float number);
-    #define _SQRT(n) (1.0f / Q_rsqrt(n))
-  #else
-    #define _SQRT(n) SQRT(n)
-  #endif
-
   // Macro to obtain the Z position of an individual tower
-  #define DELTA_Z(V,T) V[Z_AXIS] + _SQRT(   \
+  #define DELTA_Z(V,T) V[Z_AXIS] + SQRT(    \
     delta_diagonal_rod_2_tower[T] - HYPOT2( \
         delta_tower[T][X_AXIS] - V[X_AXIS], \
         delta_tower[T][Y_AXIS] - V[Y_AXIS]  \
       )                                     \
     )
 
-  #define DELTA_IK(V) do {        \
+  #define DELTA_IK(V) do {              \
     delta[A_AXIS] = DELTA_Z(V, A_AXIS); \
     delta[B_AXIS] = DELTA_Z(V, B_AXIS); \
     delta[C_AXIS] = DELTA_Z(V, C_AXIS); \
@@ -373,11 +370,6 @@ void report_current_position();
 #if ENABLED(AUTO_BED_LEVELING_BILINEAR) || ENABLED(MESH_BED_LEVELING)
   typedef float (*element_2d_fn)(const uint8_t, const uint8_t);
   void print_2d_array(const uint8_t sx, const uint8_t sy, const uint8_t precision, const element_2d_fn fn);
-#endif
-
-#if ENABLED(AUTO_BED_LEVELING_UBL)
-  typedef struct { double A, B, D; } linear_fit;
-  linear_fit* lsf_linear_fit(double x[], double y[], double z[], const int);
 #endif
 
 #if HAS_LEVELING
@@ -473,10 +465,10 @@ void prepare_move_to_destination();
 /**
  * Blocking movement and shorthand functions
  */
-void do_blocking_move_to(const float rx, const float ry, const float rz, const float &fr_mm_s=0.0);
-void do_blocking_move_to_x(const float &rx, const float &fr_mm_s=0.0);
-void do_blocking_move_to_z(const float &rz, const float &fr_mm_s=0.0);
-void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm_s=0.0);
+void do_blocking_move_to(const float rx, const float ry, const float rz, const float &fr_mm_s=0);
+void do_blocking_move_to_x(const float &rx, const float &fr_mm_s=0);
+void do_blocking_move_to_z(const float &rz, const float &fr_mm_s=0);
+void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm_s=0);
 
 #if ENABLED(ARC_SUPPORT)
   void plan_arc(const float(&cart)[XYZE], const float(&offset)[2], const bool clockwise);
@@ -536,8 +528,8 @@ void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm
    // Return true if the given position is within the machine bounds.
   inline bool position_is_reachable(const float &rx, const float &ry) {
     // Add 0.001 margin to deal with float imprecision
-    return WITHIN(rx, X_MIN_POS - 0.001, X_MAX_POS + 0.001)
-        && WITHIN(ry, Y_MIN_POS - 0.001, Y_MAX_POS + 0.001);
+    return WITHIN(rx, X_MIN_POS - 0.001f, X_MAX_POS + 0.001f)
+        && WITHIN(ry, Y_MIN_POS - 0.001f, Y_MAX_POS + 0.001f);
   }
 
   #if HAS_BED_PROBE
@@ -550,8 +542,8 @@ void do_blocking_move_to_xy(const float &rx, const float &ry, const float &fr_mm
      */
     inline bool position_is_reachable_by_probe(const float &rx, const float &ry) {
       return position_is_reachable(rx - (X_PROBE_OFFSET_FROM_EXTRUDER), ry - (Y_PROBE_OFFSET_FROM_EXTRUDER))
-          && WITHIN(rx, MIN_PROBE_X - 0.001, MAX_PROBE_X + 0.001)
-          && WITHIN(ry, MIN_PROBE_Y - 0.001, MAX_PROBE_Y + 0.001);
+          && WITHIN(rx, MIN_PROBE_X - 0.001f, MAX_PROBE_X + 0.001f)
+          && WITHIN(ry, MIN_PROBE_Y - 0.001f, MAX_PROBE_Y + 0.001f);
     }
   #endif
 

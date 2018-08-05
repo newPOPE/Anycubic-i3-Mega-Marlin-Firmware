@@ -402,7 +402,7 @@ void MarlinSettings::postprocess() {
    * M500 - Store Configuration
    */
   bool MarlinSettings::save() {
-    float dummy = 0.0f;
+    float dummy = 0;
     char ver[4] = "ERR";
 
     uint16_t working_crc = 0;
@@ -432,12 +432,12 @@ void MarlinSettings::postprocess() {
     EEPROM_WRITE(planner.min_travel_feedrate_mm_s);
 
     #if ENABLED(JUNCTION_DEVIATION)
-      const float planner_max_jerk[] = { DEFAULT_XJERK, DEFAULT_YJERK, DEFAULT_ZJERK, DEFAULT_EJERK };
+      const float planner_max_jerk[] = { float(DEFAULT_XJERK), float(DEFAULT_YJERK), float(DEFAULT_ZJERK), float(DEFAULT_EJERK) };
       EEPROM_WRITE(planner_max_jerk);
       EEPROM_WRITE(planner.junction_deviation_mm);
     #else
       EEPROM_WRITE(planner.max_jerk);
-      dummy = 0.02;
+      dummy = 0.02f;
       EEPROM_WRITE(dummy);
     #endif
 
@@ -481,7 +481,7 @@ void MarlinSettings::postprocess() {
       EEPROM_WRITE(mesh_num_y);
       EEPROM_WRITE(mbl.z_values);
     #else // For disabled MBL write a default mesh
-      dummy = 0.0f;
+      dummy = 0;
       const uint8_t mesh_num_x = 3, mesh_num_y = 3;
       EEPROM_WRITE(dummy); // z_offset
       EEPROM_WRITE(mesh_num_x);
@@ -503,7 +503,7 @@ void MarlinSettings::postprocess() {
     #if ABL_PLANAR
       EEPROM_WRITE(planner.bed_level_matrix);
     #else
-      dummy = 0.0;
+      dummy = 0;
       for (uint8_t q = 9; q--;) EEPROM_WRITE(dummy);
     #endif
 
@@ -527,7 +527,7 @@ void MarlinSettings::postprocess() {
       // For disabled Bilinear Grid write an empty 3x3 grid
       const uint8_t grid_max_x = 3, grid_max_y = 3;
       const int bilinear_start[2] = { 0 }, bilinear_grid_spacing[2] = { 0 };
-      dummy = 0.0f;
+      dummy = 0;
       EEPROM_WRITE(grid_max_x);
       EEPROM_WRITE(grid_max_y);
       EEPROM_WRITE(bilinear_grid_spacing);
@@ -565,7 +565,7 @@ void MarlinSettings::postprocess() {
       _FIELD_TEST(x_endstop_adj);
 
       // Write dual endstops in X, Y, Z order. Unused = 0.0
-      dummy = 0.0f;
+      dummy = 0;
       #if ENABLED(X_DUAL_ENDSTOPS)
         EEPROM_WRITE(endstops.x_endstop_adj);   // 1 float
       #else
@@ -617,7 +617,7 @@ void MarlinSettings::postprocess() {
         {
           dummy = DUMMY_PID_VALUE; // When read, will not change the existing value
           EEPROM_WRITE(dummy); // Kp
-          dummy = 0.0f;
+          dummy = 0;
           for (uint8_t q = 3; q--;) EEPROM_WRITE(dummy); // Ki, Kd, Kc
         }
 
@@ -696,57 +696,57 @@ void MarlinSettings::postprocess() {
 
     uint16_t tmc_stepper_current[TMC_AXES] = {
       #if HAS_TRINAMIC
-        #if X_IS_TRINAMIC
+        #if AXIS_IS_TMC(X)
           stepperX.getCurrent(),
         #else
           0,
         #endif
-        #if Y_IS_TRINAMIC
+        #if AXIS_IS_TMC(Y)
           stepperY.getCurrent(),
         #else
           0,
         #endif
-        #if Z_IS_TRINAMIC
+        #if AXIS_IS_TMC(Z)
           stepperZ.getCurrent(),
         #else
           0,
         #endif
-        #if X2_IS_TRINAMIC
+        #if AXIS_IS_TMC(X2)
           stepperX2.getCurrent(),
         #else
           0,
         #endif
-        #if Y2_IS_TRINAMIC
+        #if AXIS_IS_TMC(Y2)
           stepperY2.getCurrent(),
         #else
           0,
         #endif
-        #if Z2_IS_TRINAMIC
+        #if AXIS_IS_TMC(Z2)
           stepperZ2.getCurrent(),
         #else
           0,
         #endif
-        #if E0_IS_TRINAMIC
+        #if AXIS_IS_TMC(E0)
           stepperE0.getCurrent(),
         #else
           0,
         #endif
-        #if E1_IS_TRINAMIC
+        #if AXIS_IS_TMC(E1)
           stepperE1.getCurrent(),
         #else
           0,
         #endif
-        #if E2_IS_TRINAMIC
+        #if AXIS_IS_TMC(E2)
           stepperE2.getCurrent(),
         #else
           0,
         #endif
-        #if E3_IS_TRINAMIC
+        #if AXIS_IS_TMC(E3)
           stepperE3.getCurrent(),
         #else
           0,
         #endif
-        #if E4_IS_TRINAMIC
+        #if AXIS_IS_TMC(E4)
           stepperE4.getCurrent()
         #else
           0
@@ -765,57 +765,57 @@ void MarlinSettings::postprocess() {
 
     uint32_t tmc_hybrid_threshold[TMC_AXES] = {
       #if ENABLED(HYBRID_THRESHOLD)
-        #if X_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(X)
           TMC_GET_PWMTHRS(X, X),
         #else
           X_HYBRID_THRESHOLD,
         #endif
-        #if Y_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(Y)
           TMC_GET_PWMTHRS(Y, Y),
         #else
           Y_HYBRID_THRESHOLD,
         #endif
-        #if Z_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(Z)
           TMC_GET_PWMTHRS(Z, Z),
         #else
           Z_HYBRID_THRESHOLD,
         #endif
-        #if X2_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(X2)
           TMC_GET_PWMTHRS(X, X2),
         #else
           X2_HYBRID_THRESHOLD,
         #endif
-        #if Y2_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(Y2)
           TMC_GET_PWMTHRS(Y, Y2),
         #else
           Y2_HYBRID_THRESHOLD,
         #endif
-        #if Z2_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(Z2)
           TMC_GET_PWMTHRS(Z, Z2),
         #else
           Z2_HYBRID_THRESHOLD,
         #endif
-        #if E0_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(E0)
           TMC_GET_PWMTHRS(E, E0),
         #else
           E0_HYBRID_THRESHOLD,
         #endif
-        #if E1_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(E1)
           TMC_GET_PWMTHRS(E, E1),
         #else
           E1_HYBRID_THRESHOLD,
         #endif
-        #if E2_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(E2)
           TMC_GET_PWMTHRS(E, E2),
         #else
           E2_HYBRID_THRESHOLD,
         #endif
-        #if E3_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(E3)
           TMC_GET_PWMTHRS(E, E3),
         #else
           E3_HYBRID_THRESHOLD,
         #endif
-        #if E4_IS_TRINAMIC
+        #if AXIS_HAS_STEALTHCHOP(E4)
           TMC_GET_PWMTHRS(E, E4)
         #else
           E4_HYBRID_THRESHOLD
@@ -833,17 +833,17 @@ void MarlinSettings::postprocess() {
     //
     int16_t tmc_sgt[XYZ] = {
       #if ENABLED(SENSORLESS_HOMING)
-        #if defined(X_HOMING_SENSITIVITY) && (ENABLED(X_IS_TMC2130) || ENABLED(IS_TRAMS))
+        #if X_SENSORLESS
           stepperX.sgt(),
         #else
           0,
         #endif
-        #if defined(Y_HOMING_SENSITIVITY) && (ENABLED(Y_IS_TMC2130) || ENABLED(IS_TRAMS))
+        #if Y_SENSORLESS
           stepperY.sgt(),
         #else
           0,
         #endif
-        #if defined(Z_HOMING_SENSITIVITY) && (ENABLED(Z_IS_TMC2130) || ENABLED(IS_TRAMS))
+        #if Z_SENSORLESS
           stepperZ.sgt()
         #else
           0
@@ -863,7 +863,7 @@ void MarlinSettings::postprocess() {
     #if ENABLED(LIN_ADVANCE)
       EEPROM_WRITE(planner.extruder_advance_K);
     #else
-      dummy = 0.0f;
+      dummy = 0;
       EEPROM_WRITE(dummy);
     #endif
 
@@ -885,7 +885,7 @@ void MarlinSettings::postprocess() {
     #if ENABLED(CNC_COORDINATE_SYSTEMS)
       EEPROM_WRITE(coordinate_system); // 27 floats
     #else
-      dummy = 0.0f;
+      dummy = 0;
       for (uint8_t q = MAX_COORDINATE_SYSTEMS * XYZ; q--;) EEPROM_WRITE(dummy);
     #endif
 
@@ -900,7 +900,7 @@ void MarlinSettings::postprocess() {
       EEPROM_WRITE(planner.xz_skew_factor);
       EEPROM_WRITE(planner.yz_skew_factor);
     #else
-      dummy = 0.0f;
+      dummy = 0;
       for (uint8_t q = 3; q--;) EEPROM_WRITE(dummy);
     #endif
 
@@ -920,7 +920,7 @@ void MarlinSettings::postprocess() {
         EEPROM_WRITE(dummy);
       }
     #else
-      dummy = 0.0f;
+      dummy = 0;
       for (uint8_t q = MAX_EXTRUDERS * 2; q--;) EEPROM_WRITE(dummy);
     #endif
 
@@ -1325,37 +1325,37 @@ void MarlinSettings::postprocess() {
         uint16_t currents[TMC_AXES];
         EEPROM_READ(currents);
         if (!validating) {
-          #if X_IS_TRINAMIC
+          #if AXIS_IS_TMC(X)
             SET_CURR(X);
           #endif
-          #if Y_IS_TRINAMIC
+          #if AXIS_IS_TMC(Y)
             SET_CURR(Y);
           #endif
-          #if Z_IS_TRINAMIC
+          #if AXIS_IS_TMC(Z)
             SET_CURR(Z);
           #endif
-          #if X2_IS_TRINAMIC
+          #if AXIS_IS_TMC(X2)
             SET_CURR(X2);
           #endif
-          #if Y2_IS_TRINAMIC
+          #if AXIS_IS_TMC(Y2)
             SET_CURR(Y2);
           #endif
-          #if Z2_IS_TRINAMIC
+          #if AXIS_IS_TMC(Z2)
             SET_CURR(Z2);
           #endif
-          #if E0_IS_TRINAMIC
+          #if AXIS_IS_TMC(E0)
             SET_CURR(E0);
           #endif
-          #if E1_IS_TRINAMIC
+          #if AXIS_IS_TMC(E1)
             SET_CURR(E1);
           #endif
-          #if E2_IS_TRINAMIC
+          #if AXIS_IS_TMC(E2)
             SET_CURR(E2);
           #endif
-          #if E3_IS_TRINAMIC
+          #if AXIS_IS_TMC(E3)
             SET_CURR(E3);
           #endif
-          #if E4_IS_TRINAMIC
+          #if AXIS_IS_TMC(E4)
             SET_CURR(E4);
           #endif
         }
@@ -1369,37 +1369,37 @@ void MarlinSettings::postprocess() {
         uint32_t tmc_hybrid_threshold[TMC_AXES];
         EEPROM_READ(tmc_hybrid_threshold);
         if (!validating) {
-          #if X_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(X)
             TMC_SET_PWMTHRS(X, X);
           #endif
-          #if Y_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(Y)
             TMC_SET_PWMTHRS(Y, Y);
           #endif
-          #if Z_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(Z)
             TMC_SET_PWMTHRS(Z, Z);
           #endif
-          #if X2_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(X2)
             TMC_SET_PWMTHRS(X, X2);
           #endif
-          #if Y2_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(Y2)
             TMC_SET_PWMTHRS(Y, Y2);
           #endif
-          #if Z2_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(Z2)
             TMC_SET_PWMTHRS(Z, Z2);
           #endif
-          #if E0_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(E0)
             TMC_SET_PWMTHRS(E, E0);
           #endif
-          #if E1_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(E1)
             TMC_SET_PWMTHRS(E, E1);
           #endif
-          #if E2_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(E2)
             TMC_SET_PWMTHRS(E, E2);
           #endif
-          #if E3_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(E3)
             TMC_SET_PWMTHRS(E, E3);
           #endif
-          #if E4_IS_TRINAMIC
+          #if AXIS_HAS_STEALTHCHOP(E4)
             TMC_SET_PWMTHRS(E, E4);
           #endif
         }
@@ -1419,26 +1419,26 @@ void MarlinSettings::postprocess() {
       #if ENABLED(SENSORLESS_HOMING)
         if (!validating) {
           #ifdef X_HOMING_SENSITIVITY
-            #if ENABLED(X_IS_TMC2130) || ENABLED(IS_TRAMS)
+            #if AXIS_HAS_STALLGUARD(X)
               stepperX.sgt(tmc_sgt[0]);
             #endif
-            #if ENABLED(X2_IS_TMC2130)
+            #if AXIS_HAS_STALLGUARD(X2)
               stepperX2.sgt(tmc_sgt[0]);
             #endif
           #endif
           #ifdef Y_HOMING_SENSITIVITY
-            #if ENABLED(Y_IS_TMC2130) || ENABLED(IS_TRAMS)
+            #if AXIS_HAS_STALLGUARD(Y)
               stepperY.sgt(tmc_sgt[1]);
             #endif
-            #if ENABLED(Y2_IS_TMC2130)
+            #if AXIS_HAS_STALLGUARD(Y2)
               stepperY2.sgt(tmc_sgt[1]);
             #endif
           #endif
           #ifdef Z_HOMING_SENSITIVITY
-            #if ENABLED(Z_IS_TMC2130) || ENABLED(IS_TRAMS)
+            #if AXIS_HAS_STALLGUARD(Z)
               stepperZ.sgt(tmc_sgt[2]);
             #endif
-            #if ENABLED(Z2_IS_TMC2130)
+            #if AXIS_HAS_STALLGUARD(Z2)
               stepperZ2.sgt(tmc_sgt[2]);
             #endif
           #endif
@@ -1729,7 +1729,7 @@ void MarlinSettings::reset() {
   planner.min_travel_feedrate_mm_s = DEFAULT_MINTRAVELFEEDRATE;
 
   #if ENABLED(JUNCTION_DEVIATION)
-    planner.junction_deviation_mm = JUNCTION_DEVIATION_MM;
+    planner.junction_deviation_mm = float(JUNCTION_DEVIATION_MM);
   #else
     planner.max_jerk[X_AXIS] = DEFAULT_XJERK;
     planner.max_jerk[Y_AXIS] = DEFAULT_YJERK;
@@ -1831,7 +1831,7 @@ void MarlinSettings::reset() {
       HOTEND_LOOP()
     #endif
     {
-      PID_PARAM(Kp, e) = DEFAULT_Kp;
+      PID_PARAM(Kp, e) = float(DEFAULT_Kp);
       PID_PARAM(Ki, e) = scalePID_i(DEFAULT_Ki);
       PID_PARAM(Kd, e) = scalePID_d(DEFAULT_Kd);
       #if ENABLED(PID_EXTRUSION_SCALING)
@@ -2219,9 +2219,9 @@ void MarlinSettings::reset() {
           SERIAL_ECHOPAIR("EEPROM can hold ", calc_num_meshes());
           SERIAL_ECHOLNPGM(" meshes.\n");
         }
-
-        ubl.report_current_mesh();
-
+    
+//      ubl.report_current_mesh(PORTVAR_SOLO);   // This is too verbose for large mesh's.   A better (more terse)
+                                                 // solution needs to be found.
       #elif ENABLED(AUTO_BED_LEVELING_BILINEAR)
 
         if (leveling_is_valid()) {
@@ -2428,61 +2428,61 @@ void MarlinSettings::reset() {
     #if HAS_TRINAMIC
 
       /**
-       * TMC2130 / TMC2208 / TRAMS stepper driver current
+       * TMC2130 / TMC2208 stepper driver current
        */
       if (!forReplay) {
         CONFIG_ECHO_START;
         SERIAL_ECHOLNPGM("Stepper driver current:");
       }
       CONFIG_ECHO_START;
-      #if X_IS_TRINAMIC || Y_IS_TRINAMIC || Z_IS_TRINAMIC
+      #if AXIS_IS_TMC(X) || AXIS_IS_TMC(Y) || AXIS_IS_TMC(Z)
         say_M906();
       #endif
-      #if X_IS_TRINAMIC
+      #if AXIS_IS_TMC(X)
         SERIAL_ECHOPAIR(" X", stepperX.getCurrent());
       #endif
-      #if Y_IS_TRINAMIC
+      #if AXIS_IS_TMC(Y)
         SERIAL_ECHOPAIR(" Y", stepperY.getCurrent());
       #endif
-      #if Z_IS_TRINAMIC
+      #if AXIS_IS_TMC(Z)
         SERIAL_ECHOPAIR(" Z", stepperZ.getCurrent());
       #endif
-      #if X_IS_TRINAMIC || Y_IS_TRINAMIC || Z_IS_TRINAMIC
+      #if AXIS_IS_TMC(X) || AXIS_IS_TMC(Y) || AXIS_IS_TMC(Z)
         SERIAL_EOL();
       #endif
-      #if X2_IS_TRINAMIC || Y2_IS_TRINAMIC || Z2_IS_TRINAMIC
+      #if AXIS_IS_TMC(X2) || AXIS_IS_TMC(Y2) || AXIS_IS_TMC(Z2)
         say_M906();
         SERIAL_ECHOPGM(" I1");
       #endif
-      #if X2_IS_TRINAMIC
+      #if AXIS_IS_TMC(X2)
         SERIAL_ECHOPAIR(" X", stepperX2.getCurrent());
       #endif
-      #if Y2_IS_TRINAMIC
+      #if AXIS_IS_TMC(Y2)
         SERIAL_ECHOPAIR(" Y", stepperY2.getCurrent());
       #endif
-      #if Z2_IS_TRINAMIC
+      #if AXIS_IS_TMC(Z2)
         SERIAL_ECHOPAIR(" Z", stepperZ2.getCurrent());
       #endif
-      #if X2_IS_TRINAMIC || Y2_IS_TRINAMIC || Z2_IS_TRINAMIC
+      #if AXIS_IS_TMC(X2) || AXIS_IS_TMC(Y2) || AXIS_IS_TMC(Z2)
         SERIAL_EOL();
       #endif
-      #if E0_IS_TRINAMIC
+      #if AXIS_IS_TMC(E0)
         say_M906();
         SERIAL_ECHOLNPAIR(" T0 E", stepperE0.getCurrent());
       #endif
-      #if E_STEPPERS > 1 && E1_IS_TRINAMIC
+      #if E_STEPPERS > 1 && AXIS_IS_TMC(E1)
         say_M906();
         SERIAL_ECHOLNPAIR(" T1 E", stepperE1.getCurrent());
       #endif
-      #if E_STEPPERS > 2 && E2_IS_TRINAMIC
+      #if E_STEPPERS > 2 && AXIS_IS_TMC(E2)
         say_M906();
         SERIAL_ECHOLNPAIR(" T2 E", stepperE2.getCurrent());
       #endif
-      #if E_STEPPERS > 3 && E3_IS_TRINAMIC
+      #if E_STEPPERS > 3 && AXIS_IS_TMC(E3)
         say_M906();
         SERIAL_ECHOLNPAIR(" T3 E", stepperE3.getCurrent());
       #endif
-      #if E_STEPPERS > 4 && E4_IS_TRINAMIC
+      #if E_STEPPERS > 4 && AXIS_IS_TMC(E4)
         say_M906();
         SERIAL_ECHOLNPAIR(" T4 E", stepperE4.getCurrent());
       #endif
@@ -2497,54 +2497,54 @@ void MarlinSettings::reset() {
           SERIAL_ECHOLNPGM("Hybrid Threshold:");
         }
         CONFIG_ECHO_START;
-        #if X_IS_TRINAMIC || Y_IS_TRINAMIC || Z_IS_TRINAMIC
+        #if AXIS_IS_TMC(X) || AXIS_IS_TMC(Y) || AXIS_IS_TMC(Z)
           say_M913();
         #endif
-        #if X_IS_TRINAMIC
+        #if AXIS_IS_TMC(X)
           SERIAL_ECHOPAIR(" X", TMC_GET_PWMTHRS(X, X));
         #endif
-        #if Y_IS_TRINAMIC
+        #if AXIS_IS_TMC(Y)
           SERIAL_ECHOPAIR(" Y", TMC_GET_PWMTHRS(Y, Y));
         #endif
-        #if Z_IS_TRINAMIC
+        #if AXIS_IS_TMC(Z)
           SERIAL_ECHOPAIR(" Z", TMC_GET_PWMTHRS(Z, Z));
         #endif
-        #if X_IS_TRINAMIC || Y_IS_TRINAMIC || Z_IS_TRINAMIC
+        #if AXIS_IS_TMC(X) || AXIS_IS_TMC(Y) || AXIS_IS_TMC(Z)
           SERIAL_EOL();
         #endif
-        #if X2_IS_TRINAMIC || Y2_IS_TRINAMIC || Z2_IS_TRINAMIC
+        #if AXIS_IS_TMC(X2) || AXIS_IS_TMC(Y2) || AXIS_IS_TMC(Z2)
           say_M913();
           SERIAL_ECHOPGM(" I1");
         #endif
-        #if X2_IS_TRINAMIC
+        #if AXIS_IS_TMC(X2)
           SERIAL_ECHOPAIR(" X", TMC_GET_PWMTHRS(X, X2));
         #endif
-        #if Y2_IS_TRINAMIC
+        #if AXIS_IS_TMC(Y2)
           SERIAL_ECHOPAIR(" Y", TMC_GET_PWMTHRS(Y, Y2));
         #endif
-        #if Z2_IS_TRINAMIC
+        #if AXIS_IS_TMC(Z2)
           SERIAL_ECHOPAIR(" Z", TMC_GET_PWMTHRS(Z, Z2));
         #endif
-        #if X2_IS_TRINAMIC || Y2_IS_TRINAMIC || Z2_IS_TRINAMIC
+        #if AXIS_IS_TMC(X2) || AXIS_IS_TMC(Y2) || AXIS_IS_TMC(Z2)
           SERIAL_EOL();
         #endif
-        #if E0_IS_TRINAMIC
+        #if AXIS_IS_TMC(E0)
           say_M913();
           SERIAL_ECHOLNPAIR(" T0 E", TMC_GET_PWMTHRS(E, E0));
         #endif
-        #if E_STEPPERS > 1 && E1_IS_TRINAMIC
+        #if E_STEPPERS > 1 && AXIS_IS_TMC(E1)
           say_M913();
           SERIAL_ECHOLNPAIR(" T1 E", TMC_GET_PWMTHRS(E, E1));
         #endif
-        #if E_STEPPERS > 2 && E2_IS_TRINAMIC
+        #if E_STEPPERS > 2 && AXIS_IS_TMC(E2)
           say_M913();
           SERIAL_ECHOLNPAIR(" T2 E", TMC_GET_PWMTHRS(E, E2));
         #endif
-        #if E_STEPPERS > 3 && E3_IS_TRINAMIC
+        #if E_STEPPERS > 3 && AXIS_IS_TMC(E3)
           say_M913();
           SERIAL_ECHOLNPAIR(" T3 E", TMC_GET_PWMTHRS(E, E3));
         #endif
-        #if E_STEPPERS > 4 && E4_IS_TRINAMIC
+        #if E_STEPPERS > 4 && AXIS_IS_TMC(E4)
           say_M913();
           SERIAL_ECHOLNPAIR(" T4 E", TMC_GET_PWMTHRS(E, E4));
         #endif
@@ -2560,36 +2560,33 @@ void MarlinSettings::reset() {
           SERIAL_ECHOLNPGM("Sensorless homing threshold:");
         }
         CONFIG_ECHO_START;
-        #define HAS_X_SENSORLESS (defined(X_HOMING_SENSITIVITY) && (ENABLED(X_IS_TMC2130) || ENABLED(IS_TRAMS)))
-        #define HAS_Y_SENSORLESS (defined(Y_HOMING_SENSITIVITY) && (ENABLED(Y_IS_TMC2130) || ENABLED(IS_TRAMS)))
-        #define HAS_Z_SENSORLESS (defined(Z_HOMING_SENSITIVITY) && (ENABLED(Z_IS_TMC2130) || ENABLED(IS_TRAMS)))
-        #if HAS_X_SENSORLESS || HAS_Y_SENSORLESS || HAS_Z_SENSORLESS
+        #if X_SENSORLESS || Y_SENSORLESS || Z_SENSORLESS
           say_M914();
-          #if HAS_X_SENSORLESS
+          #if X_SENSORLESS
             SERIAL_ECHOPAIR(" X", stepperX.sgt());
           #endif
-          #if HAS_Y_SENSORLESS
+          #if Y_SENSORLESS
             SERIAL_ECHOPAIR(" Y", stepperY.sgt());
           #endif
-          #if HAS_Z_SENSORLESS
+          #if Z_SENSORLESS
             SERIAL_ECHOPAIR(" Z", stepperZ.sgt());
           #endif
           SERIAL_EOL();
         #endif
 
-        #define HAS_X2_SENSORLESS (defined(X_HOMING_SENSITIVITY) && ENABLED(X2_IS_TMC2130))
-        #define HAS_Y2_SENSORLESS (defined(Y_HOMING_SENSITIVITY) && ENABLED(Y2_IS_TMC2130))
-        #define HAS_Z2_SENSORLESS (defined(Z_HOMING_SENSITIVITY) && ENABLED(Z2_IS_TMC2130))
-        #if HAS_X2_SENSORLESS || HAS_Y2_SENSORLESS || HAS_Z2_SENSORLESS
+        #define X2_SENSORLESS (defined(X_HOMING_SENSITIVITY) && AXIS_HAS_STALLGUARD(X2))
+        #define Y2_SENSORLESS (defined(Y_HOMING_SENSITIVITY) && AXIS_HAS_STALLGUARD(Y2))
+        #define Z2_SENSORLESS (defined(Z_HOMING_SENSITIVITY) && AXIS_HAS_STALLGUARD(Z2))
+        #if X2_SENSORLESS || Y2_SENSORLESS || Z2_SENSORLESS
           say_M914();
           SERIAL_ECHOPGM(" I1");
-          #if HAS_X2_SENSORLESS
+          #if X2_SENSORLESS
             SERIAL_ECHOPAIR(" X", stepperX2.sgt());
           #endif
-          #if HAS_Y2_SENSORLESS
+          #if Y2_SENSORLESS
             SERIAL_ECHOPAIR(" Y", stepperY2.sgt());
           #endif
-          #if HAS_Z2_SENSORLESS
+          #if Z2_SENSORLESS
             SERIAL_ECHOPAIR(" Z", stepperZ2.sgt());
           #endif
           SERIAL_EOL();

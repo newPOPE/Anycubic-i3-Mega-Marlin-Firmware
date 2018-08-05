@@ -59,6 +59,7 @@
  * States for ADC reading in the ISR
  */
 enum ADCSensorState : char {
+  StartSampling,
   #if HAS_TEMP_ADC_0
     PrepareTemp_0,
     MeasureTemp_0,
@@ -107,14 +108,14 @@ enum ADCSensorState : char {
 #define ACTUAL_ADC_SAMPLES MAX(int(MIN_ADC_ISR_LOOPS), int(SensorsReady))
 
 #if HAS_PID_HEATING
-  #define PID_K2 (1.0-PID_K1)
-  #define PID_dT ((OVERSAMPLENR * float(ACTUAL_ADC_SAMPLES)) / (F_CPU / 64.0 / 256.0))
+  #define PID_K2 (1.0f-PID_K1)
+  #define PID_dT ((OVERSAMPLENR * float(ACTUAL_ADC_SAMPLES)) / (F_CPU / 64.0f / 256.0f))
 
   // Apply the scale factors to the PID values
-  #define scalePID_i(i)   ( (i) * PID_dT )
-  #define unscalePID_i(i) ( (i) / PID_dT )
-  #define scalePID_d(d)   ( (d) / PID_dT )
-  #define unscalePID_d(d) ( (d) * PID_dT )
+  #define scalePID_i(i)   ( (i) * float(PID_dT) )
+  #define unscalePID_i(i) ( (i) / float(PID_dT) )
+  #define scalePID_d(d)   ( (d) / float(PID_dT) )
+  #define unscalePID_d(d) ( (d) * float(PID_dT) )
 #endif
 
 class Temperature {
@@ -329,6 +330,7 @@ class Temperature {
     /**
      * Called from the Temperature ISR
      */
+    static void readings_ready();
     static void isr();
 
     /**
