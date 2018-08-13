@@ -1333,7 +1333,7 @@ bool get_target_extruder_from_command(const uint16_t code) {
       if (axis == X_AXIS) {
 
         // In Dual X mode hotend_offset[X] is T1's home position
-        float dual_max_x = MAX(hotend_offset[X_AXIS][1], X2_MAX_POS);
+        const float dual_max_x = MAX(hotend_offset[X_AXIS][1], X2_MAX_POS);
 
         if (active_extruder != 0) {
           // T1 can move from X2_MIN_POS to X2_MAX_POS or X2 home position (whichever is larger)
@@ -5675,7 +5675,7 @@ void home_all_axes() { gcode_G28(true); }
     #endif
   }
 
-  #if HAS_BED_PROBE
+  #if HAS_BED_PROBE && ENABLED(ULTIPANEL)
     static float probe_z_shift(const float center) {
       STOW_PROBE();
       endstops.enable_z_probe(false);
@@ -6059,7 +6059,7 @@ void home_all_axes() { gcode_G28(true); }
 
         switch (probe_points) {
           case -1:
-            #if HAS_BED_PROBE
+            #if HAS_BED_PROBE && ENABLED(ULTIPANEL)
               zprobe_zoffset += probe_z_shift(z_at_pt[CEN]);
             #endif
 
@@ -10934,7 +10934,7 @@ inline void gcode_M502() {
 #if ENABLED(MAX7219_GCODE)
   /**
    * M7219: Control the Max7219 LED matrix
-   * 
+   *
    *  I         - Initialize (clear) the matrix
    *  F         - Fill the matrix (set all bits)
    *  P         - Dump the LEDs[] array values
@@ -10943,7 +10943,7 @@ inline void gcode_M502() {
    *  X<pos>    - X position of an LED to set or toggle
    *  Y<pos>    - Y position of an LED to set or toggle
    *  V<value>  - The potentially 32-bit value or on/off state to set
-   *              (for example: a chain of 4 Max7219 devices can have 32 bit 
+   *              (for example: a chain of 4 Max7219 devices can have 32 bit
    *               rows or columns depending upon rotation)
    */
   inline void gcode_M7219() {
@@ -12052,9 +12052,6 @@ void tool_change(const uint8_t tmp_extruder, const float fr_mm_s/*=0.0*/, bool n
           #endif
         }
 
-        // Save current position to destination, for use later
-        set_destination_from_current();
-
         #if HAS_LEVELING
           // Set current position to the physical position
           const bool leveling_was_active = planner.leveling_active;
@@ -12063,10 +12060,23 @@ void tool_change(const uint8_t tmp_extruder, const float fr_mm_s/*=0.0*/, bool n
 
         #if ENABLED(DUAL_X_CARRIAGE)
 
+          #if HAS_SOFTWARE_ENDSTOPS
+            // Update the X software endstops early
+            active_extruder = tmp_extruder;
+            update_software_endstops(X_AXIS);
+            active_extruder = !tmp_extruder;
+          #endif
+
+          // Don't move the new extruder out of bounds
+          if (!WITHIN(current_position[X_AXIS], soft_endstop_min[X_AXIS], soft_endstop_max[X_AXIS]))
+            no_move = true;
+
+          if (!no_move) set_destination_from_current();
           dualx_tool_change(tmp_extruder, no_move); // Can modify no_move
 
         #else // !DUAL_X_CARRIAGE
 
+          set_destination_from_current();
           #if ENABLED(PARKING_EXTRUDER) // Dual Parking extruder
             parking_extruder_tool_change(tmp_extruder, no_move);
           #endif
@@ -12151,6 +12161,10 @@ void tool_change(const uint8_t tmp_extruder, const float fr_mm_s/*=0.0*/, bool n
       #endif
 
       feedrate_mm_s = old_feedrate_mm_s;
+
+      #if HAS_SOFTWARE_ENDSTOPS && ENABLED(DUAL_X_CARRIAGE)
+        update_software_endstops(X_AXIS);
+      #endif
 
     #else // HOTENDS <= 1
 
