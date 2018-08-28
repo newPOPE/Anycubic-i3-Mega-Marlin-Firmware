@@ -28,7 +28,6 @@
   #define BOARD_NAME "Anycubic RAMPS 1.4"
 #endif
 
-#define BOARD_NAME         "TRIGORILLA"
 #define LARGE_FLASH        true
 
 // Misc PINs
